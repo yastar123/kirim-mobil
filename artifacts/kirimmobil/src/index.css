@@ -388,7 +388,8 @@
 .topbar { position:sticky; top:0; z-index:30; background:rgba(255,255,255,.97); border-bottom:1px solid #e7ebf0; backdrop-filter:blur(16px); }
 .container-wide { width:min(1180px,calc(100% - 48px)); margin-inline:auto; }
 .hero-logistics { position:relative; overflow:hidden; background:linear-gradient(90deg,rgba(12,35,78,.95) 0%,rgba(16,44,99,.88) 48%,rgba(16,44,99,.25) 100%),url('/vehicle-logistics-hero.jpg') center 53%/cover; }
-.hero-logistics:after { content:""; position:absolute; inset:0; pointer-events:none; opacity:.1; background-image:radial-gradient(rgba(255,255,255,.6) .7px,transparent .7px); background-size:5px 5px; mix-blend-mode:soft-light; }
+.hero-editorial { background-image:linear-gradient(90deg,rgba(8,27,60,.97) 0%,rgba(16,44,99,.91) 47%,rgba(16,44,99,.2) 100%),url('/vehicle-logistics-hero.jpg'); background-position:center,66% center; background-size:cover; }
+.hero-logistics:after { content:none; }
 .eyebrow { font-size:.7rem; font-weight:700; letter-spacing:.16em; text-transform:uppercase; }
 .section-label { color:#E60012; }
 .btn-main { display:inline-flex; align-items:center; justify-content:center; gap:.55rem; min-height:48px; padding:.75rem 1.15rem; background:#102C63; color:#fff; font-weight:700; border-radius:4px; transition:transform .2s,background .2s; }
@@ -396,7 +397,7 @@
 .btn-red { background:#E60012; }
 .btn-red:hover { background:#c90010; }
 .btn-ghost { display:inline-flex; align-items:center; justify-content:center; gap:.5rem; border:1px solid #d6dce6; background:white; color:#102C63; padding:.7rem 1rem; border-radius:4px; font-weight:700; }
-.panel { background:#fff; border:1px solid #e5e9ef; border-radius:8px; box-shadow:0 8px 28px rgba(16,44,99,.045); }
+.panel { background:#fff; border:1px solid #e5e9ef; border-radius:3px; box-shadow:none; }
 .form-control { width:100%; border:1px solid #d9dfe8; background:#fff; border-radius:4px; padding:.75rem .85rem; color:#1F2937; outline:none; }
 .form-control:focus { border-color:#102C63; box-shadow:0 0 0 3px rgba(16,44,99,.1); }
 .page-enter { animation:pageIn .42s ease both; }
@@ -407,3 +408,86 @@
 @keyframes shimmer { to { background-position:-150% 0 } }
 @media(max-width:760px) { .container-wide{width:min(100% - 32px,1180px)} .hero-logistics{background-position:62% center} }
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;transition-duration:.01ms!important}}
+
+/* Homepage: clear editorial hierarchy with restrained, operational details. */
+.home-stats { overflow:hidden; border:1px solid #e5e9ef; border-top:3px solid #E60012; background:#fff; }
+.home-stat-card { min-width:0; color:#102C63; transition:background .18s ease; }
+.home-stat-card:hover { background:#f7f9fc; }
+.home-stat-card + .home-stat-card { border-left:1px solid #e5e9ef; }
+.home-stat-icon { border-right:1px solid #e5e9ef; }
+.hero-photo-note { border-left:2px solid #E60012; background:rgba(7,24,52,.72); }
+
+/* Admin workspace: dense, legible, and role-aware rather than a second marketing page. */
+.admin-shell { min-height:100dvh; display:grid; grid-template-columns:260px minmax(0,1fr); background:#f3f5f8; color:#1f2937; }
+.admin-sidebar { position:sticky; top:0; display:flex; height:100dvh; min-height:100dvh; flex-direction:column; overflow:auto; background:#102C63; color:#fff; }
+.admin-brand { display:flex; height:82px; flex:0 0 auto; align-items:center; border-bottom:1px solid rgba(255,255,255,.1); padding:0 20px; }
+.admin-brand a { display:block; background:#fff; padding:4px; }
+.admin-brand img { display:block; width:190px; }
+.admin-profile { margin:22px 20px 16px; border-left:2px solid rgba(255,255,255,.24); padding:2px 0 2px 12px; }
+.admin-profile .eyebrow { color:#b9c9e3; font-size:.61rem; }
+.admin-nav { display:grid; gap:3px; padding:0 12px 18px; }
+.admin-nav-link { display:flex; min-height:42px; align-items:center; gap:11px; border-left:2px solid transparent; padding:0 12px; color:#d8e2f1; font-size:.86rem; font-weight:600; transition:background .15s ease,color .15s ease; }
+.admin-nav-link:hover { background:rgba(255,255,255,.07); color:#fff; }
+.admin-nav-link.is-active { border-left-color:#E60012; background:rgba(255,255,255,.12); color:#fff; }
+.admin-public-link { display:flex; align-items:center; gap:8px; margin:auto 20px 20px; border-top:1px solid rgba(255,255,255,.16); padding-top:16px; color:#d8e2f1; font-size:.75rem; }
+.admin-public-link:hover { color:#fff; }
+.admin-main { min-width:0; }
+.admin-topbar { position:sticky; top:0; z-index:20; display:flex; min-height:76px; align-items:center; justify-content:space-between; gap:20px; border-bottom:1px solid #e1e6ed; background:rgba(255,255,255,.97); padding:12px clamp(20px,4vw,48px); backdrop-filter:blur(10px); }
+.admin-topbar .eyebrow { font-size:.6rem; letter-spacing:.14em; }
+.admin-content { width:min(1480px,100%); margin:0 auto; padding:34px clamp(18px,4vw,48px) 64px; }
+.admin-content .panel { border-radius:3px; }
+.admin-content .btn-main,.admin-content .btn-ghost { border-radius:2px; }
+.admin-content .form-control { border-radius:2px; }
+.admin-content table th { font-weight:700; letter-spacing:.09em; }
+.admin-loading,.admin-signin { display:grid; min-height:100dvh; place-items:center; background:#f3f5f8; padding:24px; }
+.admin-signin-card { width:min(100%,420px); border:1px solid #e1e6ed; border-top:3px solid #E60012; background:#fff; padding:36px; text-align:center; }
+.admin-denied { max-width:620px; border:1px solid #e1e6ed; border-left:3px solid #E60012; background:#fff; padding:30px; }
+.admin-metric-grid { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:12px; }
+.admin-metric-card { min-width:0; border:1px solid #e1e6ed; border-top:2px solid #102C63; background:#fff; padding:18px; }
+.admin-metric-top { display:flex; align-items:center; justify-content:space-between; color:#8390a2; }
+.admin-metric-icon { display:grid; width:34px; height:34px; place-items:center; background:#f0f3f8; color:#102C63; }
+.admin-metric-top .eyebrow { font-size:.56rem; letter-spacing:.14em; }
+.admin-metric-label { margin-top:16px; color:#576579; font-size:.76rem; font-weight:700; }
+.admin-metric-value { margin-top:5px; color:#102C63; font-size:2rem; font-weight:800; line-height:1.05; }
+.admin-metric-note { margin-top:8px; color:#7b8798; font-size:.68rem; line-height:1.4; }
+.admin-dashboard-lower { display:grid; grid-template-columns:minmax(0,1.6fr) minmax(250px,.8fr); gap:16px; margin-top:20px; align-items:start; }
+.admin-activity,.admin-quick-links { min-width:0; padding:22px; }
+.admin-activity h2,.admin-quick-links h2 { letter-spacing:-.025em; }
+.admin-quick-link { display:flex; min-height:48px; align-items:center; gap:11px; color:#334155; font-size:.85rem; font-weight:600; }
+.admin-quick-link:hover { color:#102C63; }
+
+@media(max-width:1100px) {
+  .admin-shell { grid-template-columns:220px minmax(0,1fr); }
+  .admin-metric-grid { grid-template-columns:repeat(3,minmax(0,1fr)); }
+}
+@media(max-width:760px) {
+  .home-stats { margin-top:-16px; }
+  .home-stat-card { min-height:96px; padding:14px; }
+  .home-stat-card + .home-stat-card { border-top:1px solid #e5e9ef; border-left:0; }
+  .hero-editorial { background-image:linear-gradient(90deg,rgba(8,27,60,.96) 0%,rgba(16,44,99,.87) 100%),url('/vehicle-logistics-hero.jpg'); background-position:center,62% center; }
+  .admin-shell { display:block; }
+  .admin-sidebar { position:sticky; z-index:30; top:0; height:auto; min-height:0; overflow:visible; }
+  .admin-brand { height:62px; padding:0 16px; }
+  .admin-brand img { width:172px; }
+  .admin-profile,.admin-public-link { display:none; }
+  .admin-nav { display:flex; gap:4px; overflow-x:auto; border-bottom:1px solid rgba(255,255,255,.12); padding:7px 12px; scrollbar-width:none; }
+  .admin-nav::-webkit-scrollbar { display:none; }
+  .admin-nav-link { min-height:38px; flex:0 0 auto; gap:7px; border-left:0; border-bottom:2px solid transparent; padding:0 10px; font-size:.78rem; }
+  .admin-nav-link.is-active { border-bottom-color:#E60012; }
+  .admin-topbar { position:static; min-height:64px; padding:10px 16px; }
+  .admin-topbar p { max-width:50vw; }
+  .admin-content { padding:24px 16px 44px; }
+  .admin-metric-grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:9px; }
+  .admin-metric-card { padding:14px; }
+  .admin-dashboard-lower { grid-template-columns:1fr; }
+}
+@media(max-width:420px) {
+  .admin-topbar { gap:10px; }
+  .admin-topbar .eyebrow { font-size:.53rem; }
+  .admin-topbar p { max-width:44vw; }
+  .admin-metric-grid { gap:7px; }
+  .admin-metric-card { padding:12px; }
+  .admin-metric-value { font-size:1.7rem; }
+  .admin-metric-note { font-size:.62rem; }
+  .admin-signin-card { padding:28px 22px; }
+}
