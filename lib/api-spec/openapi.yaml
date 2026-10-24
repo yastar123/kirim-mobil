@@ -1,15 +1,21 @@
 openapi: 3.1.0
 info:
-  # Do not change the title, if the title changes, the import paths will be broken
+  # Do not change the title; generated import paths depend on it.
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Kirimmobil public and admin API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: public
+    description: Public website data and rate estimates
+  - name: admin
+    description: Protected content and operations management
+  - name: Storage
+    description: Object storage uploads and serving
 paths:
   /healthz:
     get:
@@ -24,13 +30,863 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /rates:
+    get:
+      operationId: listPublicRates
+      tags: [public]
+      summary: List verified public tariffs
+      responses:
+        "200":
+          description: Published tariffs currently in effect
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Rate"
+  /rates/quote:
+    get:
+      operationId: getRateQuote
+      tags: [public]
+      summary: Estimate a vehicle shipment rate
+      parameters:
+        - name: origin
+          in: query
+          required: true
+          schema: { type: string, minLength: 1 }
+        - name: destination
+          in: query
+          required: true
+          schema: { type: string, minLength: 1 }
+        - name: vehicleCategory
+          in: query
+          required: true
+          schema: { $ref: "#/components/schemas/VehicleCategory" }
+        - name: method
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        "200":
+          description: Published estimate or request-quote result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RateQuote"
+  /schedules:
+    get:
+      operationId: listPublicSchedules
+      tags: [public]
+      summary: List current and upcoming shipment schedules
+      responses:
+        "200":
+          description: Public schedules
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Schedule"
+  /gallery:
+    get:
+      operationId: listPublicDeliveries
+      tags: [public]
+      summary: List published delivery documentation
+      responses:
+        "200":
+          description: Public delivery records with approved media only
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Delivery"
+  /content:
+    get:
+      operationId: listPublicContent
+      tags: [public]
+      summary: List published public pages, FAQs, and approved testimonials
+      parameters:
+        - name: kind
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/ContentKind"
+      responses:
+        "200":
+          description: Public content
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ContentEntry"
+  /contact:
+    get:
+      operationId: getPublicContact
+      tags: [public]
+      summary: Read public contact details
+      responses:
+        "200":
+          description: Contact information configured by an administrator
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SiteSettings"
+  /admin/session:
+    get:
+      operationId: getAdminSession
+      tags: [admin]
+      summary: Check the signed-in user's staff role
+      responses:
+        "200":
+          description: Staff session
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StaffMember"
+        "401":
+          description: Sign-in required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "403":
+          description: Signed-in user does not have an admin role
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+  /admin/overview:
+    get:
+      operationId: getAdminOverview
+      tags: [admin]
+      summary: Get dashboard counts and recent audit activity
+      responses:
+        "200":
+          description: Admin dashboard overview
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminOverview"
+        "401":
+          description: Sign-in required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "403":
+          description: Admin role required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+  /admin/rates:
+    get:
+      operationId: listAdminRates
+      tags: [admin]
+      summary: List all tariffs, including drafts
+      responses:
+        "200":
+          description: All tariffs
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Rate" }
+        "401": { description: Sign-in required }
+        "403": { description: Admin role required }
+    post:
+      operationId: createRate
+      tags: [admin]
+      summary: Create a tariff
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RateInput" }
+      responses:
+        "201":
+          description: Tariff created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Rate" }
+        "400": { description: Invalid input }
+        "401": { description: Sign-in required }
+        "403": { description: Admin role required }
+  /admin/rates/{id}:
+    patch:
+      operationId: updateRate
+      tags: [admin]
+      summary: Update a tariff
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RateUpdate" }
+      responses:
+        "200":
+          description: Tariff updated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Rate" }
+        "400": { description: Invalid input }
+        "401": { description: Sign-in required }
+        "403": { description: Admin role required }
+        "404": { description: Tariff not found }
+    delete:
+      operationId: deleteRate
+      tags: [admin]
+      summary: Archive a tariff
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "204": { description: Tariff archived }
+        "401": { description: Sign-in required }
+        "403": { description: Admin role required }
+        "404": { description: Tariff not found }
+  /admin/schedules:
+    get:
+      operationId: listAdminSchedules
+      tags: [admin]
+      summary: List all schedules, including drafts and past dates
+      responses:
+        "200":
+          description: All schedules
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Schedule" }
+        "401": { description: Sign-in required }
+        "403": { description: Admin role required }
+    post:
+      operationId: createSchedule
+      tags: [admin]
+      summary: Create a schedule
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ScheduleInput" }
+      responses:
+        "201":
+          description: Schedule created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Schedule" }
+        "400": { description: Invalid input }
+        "401": { description: Sign-in required }
+        "403": { description: Admin role required }
+  /admin/schedules/{id}:
+    patch:
+      operationId: updateSchedule
+      tags: [admin]
+      summary: Update a schedule
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ScheduleUpdate" }
+      responses:
+        "200":
+          description: Schedule updated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Schedule" }
+        "400": { description: Invalid input }
+        "401": { description: Sign-in required }
+        "403": { description: Admin role required }
+        "404": { description: Schedule not found }
+    delete:
+      operationId: deleteSchedule
+      tags: [admin]
+      summary: Archive a schedule
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "204": { description: Schedule archived }
+        "401": { description: Sign-in required }
+        "403": { description: Admin role required }
+        "404": { description: Schedule not found }
+  /admin/gallery:
+    get:
+      operationId: listAdminDeliveries
+      tags: [admin]
+      summary: List all delivery records
+      responses:
+        "200":
+          description: All delivery documentation
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Delivery" }
+        "401": { description: Sign-in required }
+        "403": { description: Admin role required }
+    post:
+      operationId: createDelivery
+      tags: [admin]
+      summary: Create a delivery record
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/DeliveryInput" }
+      responses:
+        "201":
+          description: Delivery record created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Delivery" }
+        "400": { description: Invalid input }
+        "401": { description: Sign-in required }
+        "403": { description: Admin role required }
+  /admin/gallery/{id}:
+    patch:
+      operationId: updateDelivery
+      tags: [admin]
+      summary: Update a delivery record
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/DeliveryUpdate" }
+      responses:
+        "200":
+          description: Delivery record updated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Delivery" }
+        "400": { description: Invalid input }
+        "401": { description: Sign-in required }
+        "403": { description: Admin role required }
+        "404": { description: Delivery record not found }
+    delete:
+      operationId: deleteDelivery
+      tags: [admin]
+      summary: Archive a delivery record
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "204": { description: Delivery record archived }
+        "401": { description: Sign-in required }
+        "403": { description: Admin role required }
+        "404": { description: Delivery record not found }
+  /admin/content:
+    get:
+      operationId: listAdminContent
+      tags: [admin]
+      summary: List all CMS content
+      responses:
+        "200":
+          description: CMS content
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/ContentEntry" }
+        "401": { description: Sign-in required }
+        "403": { description: Admin role required }
+    post:
+      operationId: createContent
+      tags: [admin]
+      summary: Create a page, FAQ, or testimonial
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ContentInput" }
+      responses:
+        "201":
+          description: Content created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ContentEntry" }
+        "400": { description: Invalid input }
+        "401": { description: Sign-in required }
+        "403": { description: Admin role required }
+  /admin/content/{id}:
+    patch:
+      operationId: updateContent
+      tags: [admin]
+      summary: Update CMS content
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ContentUpdate" }
+      responses:
+        "200":
+          description: Content updated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ContentEntry" }
+        "400": { description: Invalid input }
+        "401": { description: Sign-in required }
+        "403": { description: Admin role required }
+        "404": { description: Content not found }
+    delete:
+      operationId: deleteContent
+      tags: [admin]
+      summary: Archive CMS content
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "204": { description: Content archived }
+        "401": { description: Sign-in required }
+        "403": { description: Admin role required }
+        "404": { description: Content not found }
+  /admin/settings:
+    get:
+      operationId: getAdminSettings
+      tags: [admin]
+      summary: Read all business settings, including unpublished values
+      responses:
+        "200":
+          description: Admin settings
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SiteSettings" }
+        "401": { description: Sign-in required }
+        "403": { description: Admin role required }
+    patch:
+      operationId: updateAdminSettings
+      tags: [admin]
+      summary: Update official public contact and site settings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SiteSettingsUpdate" }
+      responses:
+        "200":
+          description: Settings updated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SiteSettings" }
+        "400": { description: Invalid input }
+        "401": { description: Sign-in required }
+        "403": { description: Admin role required }
+  /admin/staff:
+    get:
+      operationId: listStaff
+      tags: [admin]
+      summary: List staff roles
+      responses:
+        "200":
+          description: Staff members
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/StaffMember" }
+        "401": { description: Sign-in required }
+        "403": { description: Owner role required }
+  /admin/staff/{clerkUserId}:
+    put:
+      operationId: upsertStaffRole
+      tags: [admin]
+      summary: Assign or update a staff role
+      parameters:
+        - name: clerkUserId
+          in: path
+          required: true
+          schema: { type: string, minLength: 1 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/StaffRoleInput" }
+      responses:
+        "200":
+          description: Staff role updated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/StaffMember" }
+        "400": { description: Invalid input }
+        "401": { description: Sign-in required }
+        "403": { description: Owner role required }
+    delete:
+      operationId: removeStaffRole
+      tags: [admin]
+      summary: Remove a staff role
+      parameters:
+        - name: clerkUserId
+          in: path
+          required: true
+          schema: { type: string, minLength: 1 }
+      responses:
+        "204": { description: Staff role removed }
+        "401": { description: Sign-in required }
+        "403": { description: Owner role required }
+        "404": { description: Staff member not found }
+  /admin/audit-log:
+    get:
+      operationId: listAuditLog
+      tags: [admin]
+      summary: List recent tariff, schedule, gallery, and content changes
+      responses:
+        "200":
+          description: Recent audit events
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/AuditEvent" }
+        "401": { description: Sign-in required }
+        "403": { description: Admin role required }
+  /storage/uploads/request-url:
+    post:
+      operationId: requestUploadUrl
+      tags: [Storage]
+      summary: Request a secure direct-upload URL
+      description: Admin-only; sends metadata here and uploads file bytes directly to object storage.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UploadUrlRequest" }
+      responses:
+        "200":
+          description: Upload URL generated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/UploadUrlResponse" }
+        "400": { description: Invalid file metadata }
+        "401": { description: Sign-in required }
+        "403": { description: Admin role required }
+  /storage/objects/{objectPath}:
+    get:
+      operationId: getStorageObject
+      tags: [Storage]
+      summary: Serve a stored media object
+      parameters:
+        - name: objectPath
+          in: path
+          required: true
+          schema: { type: string, minLength: 1 }
+      responses:
+        "200":
+          description: Object content
+          content:
+            "*/*":
+              schema: { type: string, format: binary }
+        "404": { description: Object not found }
 components:
   schemas:
     HealthStatus:
       type: object
       properties:
-        status:
-          type: string
-      required:
-        - status
-
+        status: { type: string }
+      required: [status]
+    ErrorEnvelope:
+      type: object
+      properties:
+        error: { type: string }
+      required: [error]
+    VehicleCategory:
+      type: string
+      enum: [small, medium, large]
+    ContentKind:
+      type: string
+      enum: [page, faq, testimonial]
+    PublishStatus:
+      type: string
+      enum: [draft, published, inactive]
+    ScheduleStatus:
+      type: string
+      enum: [booking_open, nearly_full, closed, departed, delayed, cancelled]
+    StaffRole:
+      type: string
+      enum: [owner, admin_content, admin_operations]
+    Rate:
+      type: object
+      required: [id, origin, destination, vehicleCategory, method, price, insuranceIncluded, status, validFrom, validUntil, updatedAt]
+      properties:
+        id: { type: string, format: uuid }
+        origin: { type: string }
+        destination: { type: string }
+        vehicleCategory: { $ref: "#/components/schemas/VehicleCategory" }
+        method: { type: string }
+        price: { type: integer, minimum: 0 }
+        insuranceIncluded: { type: boolean }
+        inclusions: { type: string }
+        exclusions: { type: string }
+        status: { $ref: "#/components/schemas/PublishStatus" }
+        validFrom: { type: ["string", "null"], format: date }
+        validUntil: { type: ["string", "null"], format: date }
+        updatedAt: { type: string, format: date-time }
+    RateInput:
+      type: object
+      required: [origin, destination, vehicleCategory, method, price, insuranceIncluded, inclusions, exclusions, status]
+      properties:
+        origin: { type: string, minLength: 1 }
+        destination: { type: string, minLength: 1 }
+        vehicleCategory: { $ref: "#/components/schemas/VehicleCategory" }
+        method: { type: string, minLength: 1 }
+        price: { type: integer, minimum: 0 }
+        insuranceIncluded: { type: boolean }
+        inclusions: { type: string }
+        exclusions: { type: string }
+        status: { $ref: "#/components/schemas/PublishStatus" }
+        validFrom: { type: ["string", "null"], format: date }
+        validUntil: { type: ["string", "null"], format: date }
+    RateUpdate:
+      type: object
+      properties:
+        origin: { type: string, minLength: 1 }
+        destination: { type: string, minLength: 1 }
+        vehicleCategory: { $ref: "#/components/schemas/VehicleCategory" }
+        method: { type: string, minLength: 1 }
+        price: { type: integer, minimum: 0 }
+        insuranceIncluded: { type: boolean }
+        inclusions: { type: string }
+        exclusions: { type: string }
+        status: { $ref: "#/components/schemas/PublishStatus" }
+        validFrom: { type: ["string", "null"], format: date }
+        validUntil: { type: ["string", "null"], format: date }
+    RateQuote:
+      type: object
+      required: [available, origin, destination, vehicleCategory, method, estimatedPrice, insuranceIncluded, inclusions, exclusions, message]
+      properties:
+        available: { type: boolean }
+        origin: { type: string }
+        destination: { type: string }
+        vehicleCategory: { $ref: "#/components/schemas/VehicleCategory" }
+        method: { type: string }
+        estimatedPrice: { type: ["integer", "null"] }
+        insuranceIncluded: { type: ["boolean", "null"] }
+        inclusions: { type: ["string", "null"] }
+        exclusions: { type: ["string", "null"] }
+        message: { type: string }
+    Schedule:
+      type: object
+      required: [id, operator, origin, destination, closingDate, etd, eta, status, verifiedSlots, source, updatedAt, publishStatus]
+      properties:
+        id: { type: string, format: uuid }
+        operator: { type: string }
+        origin: { type: string }
+        destination: { type: string }
+        closingDate: { type: ["string", "null"], format: date }
+        etd: { type: ["string", "null"], format: date }
+        eta: { type: ["string", "null"], format: date }
+        status: { $ref: "#/components/schemas/ScheduleStatus" }
+        verifiedSlots: { type: ["integer", "null"], minimum: 0 }
+        source: { type: ["string", "null"] }
+        updatedAt: { type: string, format: date-time }
+        publishStatus: { $ref: "#/components/schemas/PublishStatus" }
+    ScheduleInput:
+      type: object
+      required: [operator, origin, destination, status, publishStatus]
+      properties:
+        operator: { type: string, minLength: 1 }
+        origin: { type: string, minLength: 1 }
+        destination: { type: string, minLength: 1 }
+        closingDate: { type: ["string", "null"], format: date }
+        etd: { type: ["string", "null"], format: date }
+        eta: { type: ["string", "null"], format: date }
+        status: { $ref: "#/components/schemas/ScheduleStatus" }
+        verifiedSlots: { type: ["integer", "null"], minimum: 0 }
+        source: { type: ["string", "null"] }
+        publishStatus: { $ref: "#/components/schemas/PublishStatus" }
+    ScheduleUpdate:
+      type: object
+      properties:
+        operator: { type: string, minLength: 1 }
+        origin: { type: string, minLength: 1 }
+        destination: { type: string, minLength: 1 }
+        closingDate: { type: ["string", "null"], format: date }
+        etd: { type: ["string", "null"], format: date }
+        eta: { type: ["string", "null"], format: date }
+        status: { $ref: "#/components/schemas/ScheduleStatus" }
+        verifiedSlots: { type: ["integer", "null"], minimum: 0 }
+        source: { type: ["string", "null"] }
+        publishStatus: { $ref: "#/components/schemas/PublishStatus" }
+    Delivery:
+      type: object
+      required: [id, slug, title, origin, destination, vehicleType, shippedAt, narrative, mediaPaths, status, publicationConsent, platesRedacted, updatedAt]
+      properties:
+        id: { type: string, format: uuid }
+        slug: { type: string }
+        title: { type: string }
+        origin: { type: string }
+        destination: { type: string }
+        vehicleType: { type: string }
+        shippedAt: { type: ["string", "null"], format: date }
+        narrative: { type: string }
+        mediaPaths:
+          type: array
+          items: { type: string }
+        status: { $ref: "#/components/schemas/PublishStatus" }
+        publicationConsent: { type: boolean }
+        platesRedacted: { type: boolean }
+        updatedAt: { type: string, format: date-time }
+    DeliveryInput:
+      type: object
+      required: [slug, title, origin, destination, vehicleType, narrative, mediaPaths, status, publicationConsent, platesRedacted]
+      properties:
+        slug: { type: string, minLength: 1 }
+        title: { type: string, minLength: 1 }
+        origin: { type: string, minLength: 1 }
+        destination: { type: string, minLength: 1 }
+        vehicleType: { type: string, minLength: 1 }
+        shippedAt: { type: ["string", "null"], format: date }
+        narrative: { type: string }
+        mediaPaths:
+          type: array
+          items: { type: string }
+        status: { $ref: "#/components/schemas/PublishStatus" }
+        publicationConsent: { type: boolean }
+        platesRedacted: { type: boolean }
+    DeliveryUpdate:
+      type: object
+      properties:
+        slug: { type: string, minLength: 1 }
+        title: { type: string, minLength: 1 }
+        origin: { type: string, minLength: 1 }
+        destination: { type: string, minLength: 1 }
+        vehicleType: { type: string, minLength: 1 }
+        shippedAt: { type: ["string", "null"], format: date }
+        narrative: { type: string }
+        mediaPaths:
+          type: array
+          items: { type: string }
+        status: { $ref: "#/components/schemas/PublishStatus" }
+        publicationConsent: { type: boolean }
+        platesRedacted: { type: boolean }
+    ContentEntry:
+      type: object
+      required: [id, kind, slug, title, body, status, publicationConsent, updatedAt]
+      properties:
+        id: { type: string, format: uuid }
+        kind: { $ref: "#/components/schemas/ContentKind" }
+        slug: { type: string }
+        title: { type: string }
+        body: { type: string }
+        status: { $ref: "#/components/schemas/PublishStatus" }
+        publicationConsent: { type: boolean }
+        updatedAt: { type: string, format: date-time }
+    ContentInput:
+      type: object
+      required: [kind, slug, title, body, status, publicationConsent]
+      properties:
+        kind: { $ref: "#/components/schemas/ContentKind" }
+        slug: { type: string, minLength: 1 }
+        title: { type: string, minLength: 1 }
+        body: { type: string }
+        status: { $ref: "#/components/schemas/PublishStatus" }
+        publicationConsent: { type: boolean }
+    ContentUpdate:
+      type: object
+      properties:
+        kind: { $ref: "#/components/schemas/ContentKind" }
+        slug: { type: string, minLength: 1 }
+        title: { type: string, minLength: 1 }
+        body: { type: string }
+        status: { $ref: "#/components/schemas/PublishStatus" }
+        publicationConsent: { type: boolean }
+    SiteSettings:
+      type: object
+      required: [companyName, whatsappNumber, officeAddress, officeHours, mapUrl, instagramUrl, updatedAt]
+      properties:
+        companyName: { type: string }
+        whatsappNumber: { type: ["string", "null"] }
+        officeAddress: { type: ["string", "null"] }
+        officeHours: { type: ["string", "null"] }
+        mapUrl: { type: ["string", "null"] }
+        instagramUrl: { type: ["string", "null"] }
+        updatedAt: { type: string, format: date-time }
+    SiteSettingsUpdate:
+      type: object
+      properties:
+        companyName: { type: string, minLength: 1 }
+        whatsappNumber: { type: ["string", "null"] }
+        officeAddress: { type: ["string", "null"] }
+        officeHours: { type: ["string", "null"] }
+        mapUrl: { type: ["string", "null"], format: uri }
+        instagramUrl: { type: ["string", "null"], format: uri }
+    StaffMember:
+      type: object
+      required: [clerkUserId, email, displayName, role, createdAt]
+      properties:
+        clerkUserId: { type: string }
+        email: { type: string }
+        displayName: { type: string }
+        role: { $ref: "#/components/schemas/StaffRole" }
+        createdAt: { type: string, format: date-time }
+    StaffRoleInput:
+      type: object
+      required: [email, displayName, role]
+      properties:
+        email: { type: string, format: email }
+        displayName: { type: string }
+        role: { $ref: "#/components/schemas/StaffRole" }
+    AuditEvent:
+      type: object
+      required: [id, actorEmail, entityType, entityId, action, summary, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        actorEmail: { type: string }
+        entityType: { type: string }
+        entityId: { type: string }
+        action: { type: string }
+        summary: { type: string }
+        createdAt: { type: string, format: date-time }
+    AdminOverview:
+      type: object
+      required: [draftRates, publishedRates, upcomingSchedules, publishedDeliveries, draftContent, recentActivity]
+      properties:
+        draftRates: { type: integer }
+        publishedRates: { type: integer }
+        upcomingSchedules: { type: integer }
+        publishedDeliveries: { type: integer }
+        draftContent: { type: integer }
+        recentActivity:
+          type: array
+          items: { $ref: "#/components/schemas/AuditEvent" }
+    UploadUrlRequest:
+      type: object
+      required: [name, size, contentType]
+      properties:
+        name: { type: string, minLength: 1 }
+        size: { type: integer, minimum: 1, maximum: 52428800 }
+        contentType: { type: string, enum: [image/jpeg, image/png, image/webp, video/mp4, video/quicktime] }
+    UploadUrlResponse:
+      type: object
+      required: [uploadURL, objectPath]
+      properties:
+        uploadURL: { type: string, format: uri }
+        objectPath: { type: string }
