@@ -1,15 +1,17 @@
-# [Project name]
+# Kirimmobil.com
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+Website informasi dan operasional pengiriman kendaraan antarkota dan antarpulau, dengan tarif, jadwal, dokumentasi publik, dan CMS khusus staf.
 
 ## Run & Operate
 
-- `pnpm --filter @workspace/api-server run dev` — run the API server (port 5000)
-- `pnpm run typecheck` — full typecheck across all packages
-- `pnpm run build` — typecheck + build all packages
+- `pnpm --filter @workspace/kirimmobil run dev` — run the website (managed web workflow)
+- `pnpm --filter @workspace/api-server run dev` — run the API server (managed API workflow)
+- `pnpm run typecheck` — typecheck all workspace packages
+- `pnpm run build` — typecheck and build all packages
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
-- `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
-- Required env: `DATABASE_URL` — Postgres connection string
+- `pnpm --filter @workspace/db run push` — apply schema changes to the development database
+
+The Replit-managed PostgreSQL database and Clerk authentication are provisioned for the project. Do not paste database or Clerk credentials into source files. Set `KIRIMMOBIL_OWNER_EMAIL` to the owner's primary Clerk account email before using the staff CMS; that account is assigned the initial owner role when it first opens the staff area.
 
 ## Stack
 
@@ -22,15 +24,24 @@ _Replace the heading above with the project's name, and this line with one sente
 
 ## Where things live
 
-_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
+- `artifacts/kirimmobil/src/App.tsx` — public and staff routes, page components, and generated API hooks
+- `artifacts/kirimmobil/src/index.css` — global styles and site theme
+- `artifacts/kirimmobil/public/` — logos, icons, and static media
+- `artifacts/api-server/src/routes/website.ts` — public rates, schedules, gallery, content, and contact API
+- `artifacts/api-server/src/routes/admin.ts` — staff CMS endpoints
+- `lib/db/src/schema/` — PostgreSQL schema
+- `lib/api-spec/openapi.yaml` — API contract source of truth
 
 ## Architecture decisions
 
-_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
+- Public API responses only include content that is explicitly published and approved.
+- The rate estimator does not invent prices; unavailable routes return a request-a-quote message.
+- Staff access is protected by Clerk and a database-backed role; the configured owner email bootstraps the first owner record.
+- Public uploads and private staff files use separate object-storage access policies.
 
 ## Product
 
-_Describe the high-level user-facing capabilities of this app once they exist._
+Visitors can review published shipping rates and schedules, request route estimates, read service and document guidance, view approved delivery documentation, and find official contact details. Staff manage this information through the authenticated CMS.
 
 ## User preferences
 
@@ -38,7 +49,9 @@ _Populate as you build — explicit user instructions worth remembering across s
 
 ## Gotchas
 
-_Populate as you build — sharp edges, "always run X before Y" rules._
+- A newly initialized database has no published business data, so the public site correctly shows empty states until staff add and publish confirmed rates, schedules, and content.
+- Do not add invented rates, contact details, routes, testimonials, or delivery records.
+- Re-run the managed API and web workflows after changing their environment configuration.
 
 ## Pointers
 
