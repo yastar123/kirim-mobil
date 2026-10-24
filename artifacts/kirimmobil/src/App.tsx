@@ -56,6 +56,7 @@ const mainNav = [
 ];
 const fmt = (price: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(price);
 const dateFmt = (v?: string | null) => v ? new Intl.DateTimeFormat('id-ID', { dateStyle: 'medium' }).format(new Date(v)) : 'Belum tersedia';
+const dateTimeFmt = (v?: string | null) => v ? new Intl.DateTimeFormat('id-ID', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(v)) : 'Belum tersedia';
 const human = (s: string) => s.replaceAll('_', ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 function whatsappUrl(number: string, message: string) {
   const digits = number.replace(/\D/g, '');
@@ -179,6 +180,8 @@ function Home() {
   const rates = useListPublicRates();
   const schedules = useListPublicSchedules();
   const deliveries = useListPublicDeliveries();
+  const testimonials = useListPublicContent({ kind: 'testimonial' });
+  const faqs = useListPublicContent({ kind: 'faq' });
   return <PublicLayout>
     <section className="hero-logistics hero-editorial min-h-[560px] text-white md:min-h-[625px]">
       <div className="container-wide relative z-[1] flex min-h-[560px] items-center py-16 md:min-h-[625px]">
@@ -202,12 +205,33 @@ function Home() {
     </section>
     <section className="bg-white py-20"><div className="container-wide grid gap-8 md:grid-cols-[1fr_1fr] md:items-center"><div><p className="eyebrow section-label mb-3">Transparansi</p><h2 className="text-3xl font-extrabold text-[#102C63] md:text-4xl">Yang kami tampilkan harus bisa dipertanggungjawabkan.</h2><p className="mt-4 max-w-xl leading-7 text-slate-600">Tarif dan jadwal ditampilkan hanya dari data publik yang tersedia. Dokumentasi pengiriman membutuhkan persetujuan publikasi dan perlindungan identitas kendaraan.</p></div><div className="flex flex-wrap gap-3">{[['Tarif terverifikasi', '/rates', <BadgeCheck/>],['Jadwal operasional','/schedules',<Clock3/>],['Dokumentasi berizin','/documentation',<ShieldCheck/>]].map(([label,to,icon])=><Link href={String(to)} key={String(label)} className="flex min-h-[66px] flex-1 items-center gap-3 border border-slate-200 px-4 text-sm font-bold text-[#102C63]">{icon}{label}<ChevronRight size={15} className="ml-auto" /></Link>)}</div></div></section>
     <section className="container-wide py-20"><div className="flex flex-wrap items-end justify-between gap-4"><div><p className="eyebrow section-label mb-3">Jadwal terbit</p><h2 className="text-3xl font-extrabold text-[#102C63]">Keberangkatan mendatang</h2></div><Link href="/schedules" className="inline-flex items-center gap-2 text-sm font-bold text-[#102C63]">Semua jadwal <ArrowRight size={16}/></Link></div><div className="mt-7">{schedules.isLoading?<SkeletonCards/>:schedules.isError?<LoadError retry={()=>void schedules.refetch()}/>:schedules.data?.length?<ScheduleCards schedules={schedules.data.slice(0,2)}/>:<EmptyState title="Belum ada jadwal terbit">Jadwal akan muncul di sini setelah rincian perjalanan dikonfirmasi.</EmptyState>}</div></section>
+    <section className="bg-white py-16">
+      <div className="container-wide">
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div><p className="eyebrow section-label mb-3">Dokumentasi berizin</p><h2 className="text-3xl font-extrabold text-[#102C63]">Perjalanan yang benar-benar tercatat.</h2></div>
+          <Link href="/documentation" className="inline-flex items-center gap-2 text-sm font-bold text-[#102C63]">Lihat dokumentasi <ArrowRight size={16}/></Link>
+        </div>
+        <div className="mt-7">
+          {deliveries.isLoading?<SkeletonCards/>:deliveries.isError?<LoadError retry={()=>void deliveries.refetch()}/>:deliveries.data?.length?<div className="grid gap-5 md:grid-cols-2">{deliveries.data.slice(0,2).map(d=><DeliveryCard key={d.id} d={d}/>)}</div>:<EmptyState title="Dokumentasi akan tampil setelah disetujui">Galeri hanya menampilkan pengiriman asli yang sudah mendapat izin publikasi dan perlindungan identitas.</EmptyState>}
+        </div>
+      </div>
+    </section>
+    <section className="container-wide grid gap-12 py-16 md:grid-cols-2">
+      <div>
+        <div className="flex items-end justify-between gap-4"><div><p className="eyebrow section-label mb-3">Cerita pelanggan</p><h2 className="text-2xl font-extrabold text-[#102C63]">Pengalaman yang dibagikan dengan izin.</h2></div><Link href="/testimonials" aria-label="Semua cerita pelanggan" className="shrink-0 text-sm font-bold text-[#102C63]">Semua cerita <ArrowRight size={15} className="inline"/></Link></div>
+        <div className="mt-5">{testimonials.isLoading?<SkeletonCards/>:testimonials.isError?<LoadError retry={()=>void testimonials.refetch()}/>:testimonials.data?.length?<div className="grid gap-3">{testimonials.data.slice(0,2).map(t=><article key={t.id} className="panel p-5"><p className="text-2xl font-serif text-[#E60012]">“</p><h3 className="font-bold text-[#102C63]">{t.title}</h3><p className="mt-2 line-clamp-4 whitespace-pre-line text-sm leading-6 text-slate-600">{t.body}</p></article>)}</div>:<EmptyState title="Belum ada cerita pelanggan">Testimoni akan ditampilkan setelah isi dan persetujuan publikasinya dikonfirmasi.</EmptyState>}</div>
+      </div>
+      <div>
+        <div className="flex items-end justify-between gap-4"><div><p className="eyebrow section-label mb-3">Bantuan</p><h2 className="text-2xl font-extrabold text-[#102C63]">Pertanyaan sebelum mengirim.</h2></div><Link href="/faq" aria-label="Semua pertanyaan umum" className="shrink-0 text-sm font-bold text-[#102C63]">Semua FAQ <ArrowRight size={15} className="inline"/></Link></div>
+        <div className="mt-5">{faqs.isLoading?<SkeletonCards/>:faqs.isError?<LoadError retry={()=>void faqs.refetch()}/>:faqs.data?.length?<div className="grid gap-3">{faqs.data.slice(0,3).map(f=><details key={f.id} className="panel group p-5"><summary className="flex cursor-pointer list-none items-center justify-between gap-4 font-bold text-[#102C63]">{f.title}<ChevronDown size={18} className="shrink-0 transition group-open:rotate-180"/></summary><p className="mt-4 whitespace-pre-line text-sm leading-6 text-slate-600">{f.body}</p></details>)}</div>:<EmptyState title="FAQ belum diterbitkan">Jawaban resmi akan muncul setelah ditinjau dan diterbitkan oleh tim.</EmptyState>}</div>
+      </div>
+    </section>
     <section className="bg-[#eaf0f7] py-14"><div className="container-wide flex flex-col items-start justify-between gap-6 md:flex-row md:items-center"><div><p className="eyebrow section-label mb-2">Mulai dari informasi rute</p><h2 className="text-2xl font-extrabold text-[#102C63]">Cek estimasi sebelum menghubungi tim.</h2><p className="mt-2 text-sm text-slate-600">Nominal estimasi hanya tersedia jika rute telah memiliki tarif terpublikasi.</p></div><Link href="/rates" className="btn-main">Buka estimator tarif <ArrowRight size={17}/></Link></div></section>
   </PublicLayout>;
 }
 function SkeletonCards() { return <div className="grid gap-4 md:grid-cols-2">{[1,2].map((x)=><div key={x} className="panel p-6"><div className="skeleton mb-4 h-4 w-28"/><div className="skeleton mb-3 h-6 w-3/4"/><div className="skeleton h-4 w-1/2"/></div>)}</div>; }
 function ScheduleCards({ schedules }: { schedules: Schedule[] }) {
-  return <div className="grid gap-4 md:grid-cols-2">{schedules.map(s=><article className="panel p-6" key={s.id}><div className="flex items-center justify-between gap-4"><span className="eyebrow text-slate-500">{s.operator}</span><span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-bold text-[#102C63]">{human(s.status)}</span></div><div className="route-line mt-5 grid gap-3 pl-6"><div className="relative"><span className="absolute -left-[26px] top-1 h-3 w-3 rounded-full border-2 border-[#102C63] bg-white"/><p className="text-xs text-slate-500">Asal</p><p className="font-bold text-[#102C63]">{s.origin}</p></div><div className="relative"><span className="absolute -left-[26px] top-1 h-3 w-3 rounded-full bg-[#E60012]"/><p className="text-xs text-slate-500">Tujuan</p><p className="font-bold text-[#102C63]">{s.destination}</p></div></div><div className="mt-5 grid grid-cols-2 gap-3 border-t border-slate-100 pt-4 text-sm"><div><span className="text-xs text-slate-500">ETD</span><p className="font-semibold">{dateFmt(s.etd)}</p></div><div><span className="text-xs text-slate-500">ETA</span><p className="font-semibold">{dateFmt(s.eta)}</p></div></div>{s.verifiedSlots !== null && <p className="mt-4 text-xs text-slate-500">Slot terverifikasi: {s.verifiedSlots}</p>}</article>)}</div>;
+  return <div className="grid gap-4 md:grid-cols-2">{schedules.map(s=><article className="panel p-6" key={s.id}><div className="flex items-center justify-between gap-4"><span className="eyebrow text-slate-500">{s.operator}</span><span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-bold text-[#102C63]">{human(s.status)}</span></div><div className="route-line mt-5 grid gap-3 pl-6"><div className="relative"><span className="absolute -left-[26px] top-1 h-3 w-3 rounded-full border-2 border-[#102C63] bg-white"/><p className="text-xs text-slate-500">Asal</p><p className="font-bold text-[#102C63]">{s.origin}</p></div><div className="relative"><span className="absolute -left-[26px] top-1 h-3 w-3 rounded-full bg-[#E60012]"/><p className="text-xs text-slate-500">Tujuan</p><p className="font-bold text-[#102C63]">{s.destination}</p></div></div><div className="mt-5 grid grid-cols-2 gap-3 border-t border-slate-100 pt-4 text-sm"><div><span className="text-xs text-slate-500">Closing</span><p className="font-semibold">{dateFmt(s.closingDate)}</p></div><div><span className="text-xs text-slate-500">ETD</span><p className="font-semibold">{dateFmt(s.etd)}</p></div><div><span className="text-xs text-slate-500">ETA</span><p className="font-semibold">{dateFmt(s.eta)}</p></div>{s.verifiedSlots !== null && <div><span className="text-xs text-slate-500">Slot terverifikasi</span><p className="font-semibold">{s.verifiedSlots}</p></div>}</div><div className="mt-4 border-t border-slate-100 pt-3 text-xs leading-5 text-slate-500">{s.source&&<p>Sumber: {s.source}</p>}<p>Diperbarui: {dateTimeFmt(s.updatedAt)}</p></div></article>)}</div>;
 }
 function AboutPage() {
   const contact=useGetPublicContact();
