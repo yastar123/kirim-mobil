@@ -2,10 +2,11 @@ import { Readable } from 'stream';
 import {
   RequestUploadUrlBody,
   RequestUploadUrlResponse,
+  GetStorageObjectParams,
 } from '@workspace/api-zod';
 import { Router, type IRouter, type Request, type Response } from 'express';
-
-import { ObjectPermission } from '../lib/objectAcl';
+import { requireStaff } from '../lib/adminAuth';
+import { isPublishedDeliveryMedia } from './admin';
 import {
   ObjectNotFoundError,
   ObjectStorageService,
@@ -13,19 +14,6 @@ import {
 
 const router: IRouter = Router();
 const objectStorageService = new ObjectStorageService();
-
-function hasAuthenticatedSession(
-  req: Request,
-): req is Request & { isAuthenticated: () => boolean } {
-  if (
-    !('isAuthenticated' in req) ||
-    typeof req.isAuthenticated !== 'function'
-  ) {
-    return false;
-  }
-
-  return req.isAuthenticated();
-}
 
 /**
  * POST /storage/uploads/request-url
@@ -37,13 +25,8 @@ function hasAuthenticatedSession(
  */
 router.post(
   '/storage/uploads/request-url',
+  requireStaff('owner', 'admin_content'),
   async (req: Request, res: Response) => {
-    if (!hasAuthenticatedSession(req)) {
-      res.status(401).json({ error: 'Unauthorized' });
-
-      return;
-    }
-
     const parsed = RequestUploadUrlBody.safeParse(req.body);
     if (!parsed.success) {
       res.status(400).json({ error: 'Missing or invalid required fields' });
@@ -61,7 +44,6 @@ router.post(
         RequestUploadUrlResponse.parse({
           uploadURL,
           objectPath,
-          metadata: { name, size, contentType },
         }),
       );
     } catch (error) {
@@ -122,23 +104,13 @@ router.get('/storage/objects/*path', async (req: Request, res: Response) => {
     const raw = req.params.path;
     const wildcardPath = Array.isArray(raw) ? raw.join('/') : raw;
     const objectPath = `/objects/${wildcardPath}`;
+    const parsed = GetStorageObjectParams.safeParse({ objectPath: wildcardPath });
+    if (!parsed.success || !(await isPublishedDeliveryMedia(objectPath))) {
+      res.status(404).json({ error: 'Object not found' });
+      return;
+    }
     const objectFile =
       await objectStorageService.getObjectEntityFile(objectPath);
-
-    // --- Protected route example (uncomment when using replit-auth) ---
-    // if (!req.isAuthenticated()) {
-    //   res.status(401).json({ error: "Unauthorized" });
-    //   return;
-    // }
-    // const canAccess = await objectStorageService.canAccessObjectEntity({
-    //   userId: req.user.id,
-    //   objectFile,
-    //   requestedPermission: ObjectPermission.READ,
-    // });
-    // if (!canAccess) {
-    //   res.status(403).json({ error: "Forbidden" });
-    //   return;
-    // }
 
     const response = await objectStorageService.downloadObject(objectFile);
 
