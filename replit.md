@@ -11,7 +11,7 @@ Website informasi dan operasional pengiriman kendaraan antarkota dan antarpulau,
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
 - `pnpm --filter @workspace/db run push` — apply schema changes to the development database
 
-The Replit-managed PostgreSQL database and Clerk authentication are provisioned for the project. Do not paste database or Clerk credentials into source files. Set `KIRIMMOBIL_OWNER_EMAIL` to the owner's primary Clerk account email before using the staff CMS; that account is assigned the initial owner role when it first opens the staff area.
+The Replit-managed PostgreSQL database and Clerk authentication are provisioned for the project. Clerk keys belong in Replit Secrets, not a committed `.env` file or source code. Set `KIRIMMOBIL_OWNER_EMAIL` in Replit Environment Variables to the owner's primary Clerk account email. The owner signs up through the site's Clerk page and receives the initial owner role on the first staff-area visit; do not create or share a default password.
 
 ## Stack
 
