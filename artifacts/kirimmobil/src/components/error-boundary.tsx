@@ -71,13 +71,23 @@ export class ErrorBoundary extends Component<
   state: ErrorBoundaryState = { error: null };
 
   static getDerivedStateFromError(error: unknown): ErrorBoundaryState {
-    return { error: toError(error) };
+    const err = toError(error);
+    const errStr = String(error) + (err.message || '') + (err.stack || '');
+    if (errStr.includes('chrome-extension://')) {
+      return { error: null };
+    }
+    return { error: err };
   }
 
   componentDidCatch(error: unknown, info: ErrorInfo): void {
+    const err = toError(error);
+    const errStr = String(error) + (err.message || '') + (err.stack || '');
+    if (errStr.includes('chrome-extension://')) {
+      return;
+    }
     console.error(
       'ErrorBoundary caught an error:',
-      toError(error),
+      err,
       info.componentStack,
     );
   }

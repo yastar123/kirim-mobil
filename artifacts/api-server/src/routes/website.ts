@@ -34,22 +34,28 @@ router.get("/rates/quote", async (req, res): Promise<void> => {
 
   const { origin, destination, vehicleCategory, method } = query.data;
   const todayValue = today();
-  const candidates = await db
+  const normOrigin = origin.trim().toLowerCase();
+  const normDest = destination.trim().toLowerCase();
+  const normMethod = method ? method.trim().toLowerCase() : undefined;
+
+  const allRates = await db
     .select()
     .from(ratesTable)
     .where(
       and(
         eq(ratesTable.status, "published"),
         isNull(ratesTable.archivedAt),
-        eq(ratesTable.origin, origin.trim()),
-        eq(ratesTable.destination, destination.trim()),
-        eq(ratesTable.vehicleCategory, vehicleCategory),
-        method ? eq(ratesTable.method, method) : undefined,
       ),
     );
 
-  const rate = candidates.find(
+  const rate = allRates.find(
     (entry) =>
+      entry.status === "published" &&
+      !entry.archivedAt &&
+      entry.origin.trim().toLowerCase() === normOrigin &&
+      entry.destination.trim().toLowerCase() === normDest &&
+      entry.vehicleCategory === vehicleCategory &&
+      (!normMethod || entry.method.toLowerCase().includes(normMethod)) &&
       (!entry.validFrom || entry.validFrom <= todayValue) &&
       (!entry.validUntil || entry.validUntil >= todayValue),
   );
@@ -84,6 +90,51 @@ router.get("/rates/quote", async (req, res): Promise<void> => {
   res.json(GetRateQuoteResponse.parse(result));
 });
 
+function cleanRate(r: any) {
+  if (!r) return r;
+  return {
+    ...r,
+    inclusions: r.inclusions ?? "",
+    exclusions: r.exclusions ?? "",
+    validFrom: r.validFrom ? new Date(r.validFrom) : null,
+    validUntil: r.validUntil ? new Date(r.validUntil) : null,
+    updatedAt: r.updatedAt ? new Date(r.updatedAt) : new Date(),
+  };
+}
+
+function cleanSchedule(s: any) {
+  if (!s) return s;
+  return {
+    ...s,
+    closingDate: s.closingDate ? new Date(s.closingDate) : null,
+    etd: s.etd ? new Date(s.etd) : null,
+    eta: s.eta ? new Date(s.eta) : null,
+    verifiedSlots: s.verifiedSlots ?? null,
+    source: s.source ?? null,
+    updatedAt: s.updatedAt ? new Date(s.updatedAt) : new Date(),
+  };
+}
+
+function cleanDelivery(d: any) {
+  if (!d) return d;
+  return {
+    ...d,
+    shippedAt: d.shippedAt ? new Date(d.shippedAt) : null,
+    narrative: d.narrative ?? "",
+    mediaPaths: Array.isArray(d.mediaPaths) ? d.mediaPaths : [],
+    updatedAt: d.updatedAt ? new Date(d.updatedAt) : new Date(),
+  };
+}
+
+function cleanContent(c: any) {
+  if (!c) return c;
+  return {
+    ...c,
+    publicationConsent: Boolean(c.publicationConsent),
+    updatedAt: c.updatedAt ? new Date(c.updatedAt) : new Date(),
+  };
+}
+
 router.get("/rates", async (_req, res): Promise<void> => {
   const todayValue = today();
   const rows = await db
@@ -97,7 +148,7 @@ router.get("/rates", async (_req, res): Promise<void> => {
       (!entry.validFrom || entry.validFrom <= todayValue) &&
       (!entry.validUntil || entry.validUntil >= todayValue),
   );
-  res.json(ListPublicRatesResponse.parse(activeRows));
+  res.json(ListPublicRatesResponse.parse(activeRows.map(cleanRate)));
 });
 
 router.get("/schedules", async (_req, res): Promise<void> => {
@@ -117,7 +168,7 @@ router.get("/schedules", async (_req, res): Promise<void> => {
       ),
     );
   const current = rows.filter((entry) => !entry.etd || entry.etd >= today());
-  res.json(ListPublicSchedulesResponse.parse(current));
+  res.json(ListPublicSchedulesResponse.parse(current.map(cleanSchedule)));
 });
 
 router.get("/gallery", async (_req, res): Promise<void> => {
@@ -132,7 +183,7 @@ router.get("/gallery", async (_req, res): Promise<void> => {
         isNull(deliveriesTable.archivedAt),
       ),
     );
-  res.json(ListPublicDeliveriesResponse.parse(rows));
+  res.json(ListPublicDeliveriesResponse.parse(rows.map(cleanDelivery)));
 });
 
 router.get("/content", async (req, res): Promise<void> => {
@@ -155,7 +206,7 @@ router.get("/content", async (req, res): Promise<void> => {
   const approved = rows.filter(
     (entry) => entry.kind !== "testimonial" || entry.publicationConsent,
   );
-  res.json(ListPublicContentResponse.parse(approved));
+  res.json(ListPublicContentResponse.parse(approved.map(cleanContent)));
 });
 
 router.get("/contact", async (_req, res): Promise<void> => {

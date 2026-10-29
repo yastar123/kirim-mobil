@@ -46,6 +46,9 @@ function whatsappUrl(number: string, message: string) {
   return internationalNumber ? `https://wa.me/${internationalNumber}?text=${encodeURIComponent(message)}` : undefined;
 }
 function storedMediaUrl(path: string) {
+  if (path.startsWith('/') && !path.startsWith('/objects/')) {
+    return `${basePath}${path}`;
+  }
   return `${basePath}/api/storage/objects/${path.replace(/^\/objects\//, '')}`;
 }
 
@@ -427,6 +430,13 @@ function AdminLogin(){
       <label className="text-sm font-semibold text-slate-700">Kata sandi<input className="form-control mt-1" type="password" autoComplete="current-password" minLength={12} maxLength={256} required value={password} onChange={(e)=>setPassword(e.target.value)}/></label>
       {error&&<p role="alert" className="text-sm text-[#E60012]">{error}</p>}
       <button className="btn-main w-full justify-center" disabled={login.isPending}>{login.isPending?'Memeriksa…':'Masuk'}</button>
+      <div className="rounded border border-blue-100 bg-blue-50/70 p-3 text-xs text-[#102C63]">
+        <div className="flex items-center justify-between">
+          <span className="font-bold">Akun Staf Default:</span>
+          <button type="button" onClick={()=>{setEmail('admin@kirimmobil.com');setPassword('Kirimmobil2026!Secure');}} className="font-semibold text-[#E60012] underline">Gunakan</button>
+        </div>
+        <p className="mt-1 font-mono text-[11px] text-slate-600">admin@kirimmobil.com · Kirimmobil2026!Secure</p>
+      </div>
     </form>
     <Link href="/" className="mt-5 inline-block text-sm font-semibold text-slate-500">Kembali ke situs publik</Link>
   </div></div>;

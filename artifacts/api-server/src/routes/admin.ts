@@ -82,9 +82,51 @@ function today(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
-function dateString(value: Date | string | null | undefined): string | null | undefined {
-  if (value == null) return value;
-  return value instanceof Date ? value.toISOString().slice(0, 10) : value;
+function dateString(value: Date | string | null | undefined): string | null {
+  if (value == null || value === "") return null;
+  return value instanceof Date ? value.toISOString().slice(0, 10) : String(value);
+}
+
+function cleanDate(val: any): Date | null {
+  if (!val) return null;
+  const d = val instanceof Date ? val : new Date(val);
+  return isNaN(d.getTime()) ? null : d;
+}
+
+function cleanRate(r: any) {
+  if (!r) return r;
+  return {
+    ...r,
+    inclusions: r.inclusions ?? "",
+    exclusions: r.exclusions ?? "",
+    validFrom: cleanDate(r.validFrom),
+    validUntil: cleanDate(r.validUntil),
+    updatedAt: cleanDate(r.updatedAt) ?? new Date(),
+  };
+}
+
+function cleanSchedule(s: any) {
+  if (!s) return s;
+  return {
+    ...s,
+    closingDate: cleanDate(s.closingDate),
+    etd: cleanDate(s.etd),
+    eta: cleanDate(s.eta),
+    verifiedSlots: s.verifiedSlots ?? null,
+    source: s.source ?? null,
+    updatedAt: cleanDate(s.updatedAt) ?? new Date(),
+  };
+}
+
+function cleanDelivery(d: any) {
+  if (!d) return d;
+  return {
+    ...d,
+    shippedAt: cleanDate(d.shippedAt),
+    narrative: d.narrative ?? "",
+    mediaPaths: Array.isArray(d.mediaPaths) ? d.mediaPaths : [],
+    updatedAt: cleanDate(d.updatedAt) ?? new Date(),
+  };
 }
 
 router.post("/admin/login", limitAdminLoginAttempts, async (req, res): Promise<void> => {
@@ -194,7 +236,7 @@ router.get("/admin/rates", requireStaff(...operationsRoles), async (_req, res): 
     .from(ratesTable)
     .where(isNull(ratesTable.archivedAt))
     .orderBy(desc(ratesTable.updatedAt));
-  res.json(ListAdminRatesResponse.parse(rows));
+  res.json(ListAdminRatesResponse.parse(rows.map(cleanRate)));
 });
 
 router.post("/admin/rates", requireStaff(...operationsRoles), async (req, res): Promise<void> => {
@@ -218,7 +260,7 @@ router.post("/admin/rates", requireStaff(...operationsRoles), async (req, res): 
     action: "created",
     summary: `Tarif ${rate.origin} → ${rate.destination} dibuat`,
   });
-  res.status(201).json(CreateRateResponse.parse(rate));
+  res.status(201).json(CreateRateResponse.parse(cleanRate(rate)));
 });
 
 router.patch("/admin/rates/:id", requireStaff(...operationsRoles), async (req, res): Promise<void> => {
@@ -228,13 +270,16 @@ router.patch("/admin/rates/:id", requireStaff(...operationsRoles), async (req, r
     res.status(400).json({ error: params.error?.message ?? parsed.error?.message ?? "Isi perubahan tarif." });
     return;
   }
+  const updatePayload: Record<string, any> = { ...parsed.data };
+  if ("validFrom" in parsed.data) {
+    updatePayload.validFrom = dateString(parsed.data.validFrom);
+  }
+  if ("validUntil" in parsed.data) {
+    updatePayload.validUntil = dateString(parsed.data.validUntil);
+  }
   const [rate] = await db
     .update(ratesTable)
-    .set({
-      ...parsed.data,
-      validFrom: dateString(parsed.data.validFrom),
-      validUntil: dateString(parsed.data.validUntil),
-    })
+    .set(updatePayload)
     .where(and(eq(ratesTable.id, params.data.id), isNull(ratesTable.archivedAt)))
     .returning();
   if (!rate) {
@@ -247,7 +292,7 @@ router.patch("/admin/rates/:id", requireStaff(...operationsRoles), async (req, r
     action: "updated",
     summary: `Tarif ${rate.origin} → ${rate.destination} diperbarui`,
   });
-  res.json(UpdateRateResponse.parse(rate));
+  res.json(UpdateRateResponse.parse(cleanRate(rate)));
 });
 
 router.delete("/admin/rates/:id", requireStaff(...operationsRoles), async (req, res): Promise<void> => {
@@ -280,7 +325,7 @@ router.get("/admin/schedules", requireStaff(...operationsRoles), async (_req, re
     .from(schedulesTable)
     .where(isNull(schedulesTable.archivedAt))
     .orderBy(desc(schedulesTable.updatedAt));
-  res.json(ListAdminSchedulesResponse.parse(rows));
+  res.json(ListAdminSchedulesResponse.parse(rows.map(cleanSchedule)));
 });
 
 router.post("/admin/schedules", requireStaff(...operationsRoles), async (req, res): Promise<void> => {
@@ -304,7 +349,7 @@ router.post("/admin/schedules", requireStaff(...operationsRoles), async (req, re
     action: "created",
     summary: `Jadwal ${schedule.origin} → ${schedule.destination} dibuat`,
   });
-  res.status(201).json(CreateScheduleResponse.parse(schedule));
+  res.status(201).json(CreateScheduleResponse.parse(cleanSchedule(schedule)));
 });
 
 router.patch("/admin/schedules/:id", requireStaff(...operationsRoles), async (req, res): Promise<void> => {
@@ -314,14 +359,19 @@ router.patch("/admin/schedules/:id", requireStaff(...operationsRoles), async (re
     res.status(400).json({ error: params.error?.message ?? parsed.error?.message ?? "Isi perubahan jadwal." });
     return;
   }
+  const updatePayload: Record<string, any> = { ...parsed.data };
+  if ("closingDate" in parsed.data) {
+    updatePayload.closingDate = dateString(parsed.data.closingDate);
+  }
+  if ("etd" in parsed.data) {
+    updatePayload.etd = dateString(parsed.data.etd);
+  }
+  if ("eta" in parsed.data) {
+    updatePayload.eta = dateString(parsed.data.eta);
+  }
   const [schedule] = await db
     .update(schedulesTable)
-    .set({
-      ...parsed.data,
-      closingDate: dateString(parsed.data.closingDate),
-      etd: dateString(parsed.data.etd),
-      eta: dateString(parsed.data.eta),
-    })
+    .set(updatePayload)
     .where(and(eq(schedulesTable.id, params.data.id), isNull(schedulesTable.archivedAt)))
     .returning();
   if (!schedule) {
@@ -334,7 +384,7 @@ router.patch("/admin/schedules/:id", requireStaff(...operationsRoles), async (re
     action: "updated",
     summary: `Jadwal ${schedule.origin} → ${schedule.destination} diperbarui`,
   });
-  res.json(UpdateScheduleResponse.parse(schedule));
+  res.json(UpdateScheduleResponse.parse(cleanSchedule(schedule)));
 });
 
 router.delete("/admin/schedules/:id", requireStaff(...operationsRoles), async (req, res): Promise<void> => {
@@ -367,7 +417,7 @@ router.get("/admin/gallery", requireStaff(...contentRoles), async (_req, res): P
     .from(deliveriesTable)
     .where(isNull(deliveriesTable.archivedAt))
     .orderBy(desc(deliveriesTable.updatedAt));
-  res.json(ListAdminDeliveriesResponse.parse(rows));
+  res.json(ListAdminDeliveriesResponse.parse(rows.map(cleanDelivery)));
 });
 
 router.post("/admin/gallery", requireStaff(...contentRoles), async (req, res): Promise<void> => {
@@ -386,7 +436,7 @@ router.post("/admin/gallery", requireStaff(...contentRoles), async (req, res): P
     action: "created",
     summary: `Dokumentasi ${delivery.title} dibuat`,
   });
-  res.status(201).json(CreateDeliveryResponse.parse(delivery));
+  res.status(201).json(CreateDeliveryResponse.parse(cleanDelivery(delivery)));
 });
 
 router.patch("/admin/gallery/:id", requireStaff(...contentRoles), async (req, res): Promise<void> => {
@@ -396,9 +446,13 @@ router.patch("/admin/gallery/:id", requireStaff(...contentRoles), async (req, re
     res.status(400).json({ error: params.error?.message ?? parsed.error?.message ?? "Isi perubahan dokumentasi." });
     return;
   }
+  const updatePayload: Record<string, any> = { ...parsed.data };
+  if ("shippedAt" in parsed.data) {
+    updatePayload.shippedAt = dateString(parsed.data.shippedAt);
+  }
   const [delivery] = await db
     .update(deliveriesTable)
-    .set({ ...parsed.data, shippedAt: dateString(parsed.data.shippedAt) })
+    .set(updatePayload)
     .where(and(eq(deliveriesTable.id, params.data.id), isNull(deliveriesTable.archivedAt)))
     .returning();
   if (!delivery) {
@@ -411,7 +465,7 @@ router.patch("/admin/gallery/:id", requireStaff(...contentRoles), async (req, re
     action: "updated",
     summary: `Dokumentasi ${delivery.title} diperbarui`,
   });
-  res.json(UpdateDeliveryResponse.parse(delivery));
+  res.json(UpdateDeliveryResponse.parse(cleanDelivery(delivery)));
 });
 
 router.delete("/admin/gallery/:id", requireStaff(...contentRoles), async (req, res): Promise<void> => {
@@ -536,6 +590,29 @@ router.get("/admin/settings", requireStaff(...contentRoles), async (_req, res): 
 router.patch("/admin/settings", requireStaff(...contentRoles), async (req, res): Promise<void> => {
   const parsed = UpdateAdminSettingsBody.safeParse(req.body);
   if (!parsed.success || Object.keys(parsed.data ?? {}).length === 0) {
+    res.status(400).json({ error: parsed.error?.message ?? "Isi pengaturan yang akan diubah." });
+    return;
+  }
+  const [settings] = await db
+    .insert(siteSettingsTable)
+    .values({ id: 1, ...parsed.data })
+    .onConflictDoUpdate({
+      target: siteSettingsTable.id,
+      set: { ...parsed.data, updatedAt: new Date() },
+    })
+    .returning();
+  await recordAudit(getStaffFromResponse(res), {
+    entityType: "settings",
+    entityId: "1",
+    action: "updated",
+    summary: "Pengaturan situs diperbarui",
+  });
+  res.json(UpdateAdminSettingsResponse.parse(settings));
+});
+
+router.put("/admin/settings", requireStaff(...contentRoles), async (req, res): Promise<void> => {
+  const parsed = UpdateAdminSettingsBody.safeParse(req.body);
+  if (!parsed.success) {
     res.status(400).json({ error: parsed.error?.message ?? "Isi pengaturan yang akan diubah." });
     return;
   }
