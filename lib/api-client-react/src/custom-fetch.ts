@@ -300,7 +300,11 @@ async function parseSuccessBody(
   }
 
   const effectiveType =
-    responseType === "auto" ? inferResponseType(response) : responseType;
+    responseType === "auto" && getMediaType(response.headers) === "text/html"
+      ? "json"
+      : responseType === "auto"
+        ? inferResponseType(response)
+        : responseType;
 
   switch (effectiveType) {
     case "json":
