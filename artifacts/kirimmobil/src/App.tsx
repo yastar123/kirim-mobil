@@ -1,8 +1,5 @@
 import { type FormEvent, type ReactNode, useEffect, useMemo, useState } from 'react';
 import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query';
-import { ClerkProvider, SignIn, SignUp } from '@clerk/react';
-import { publishableKeyFromHost } from '@clerk/react/internal';
-import { shadcn } from '@clerk/themes';
 import {
   ArrowDownRight, ArrowRight, ArrowUpRight, BadgeCheck, CalendarDays, Check, ChevronDown,
   ChevronRight, CircleAlert, Clock3, FileCheck2, FileText, Gauge, HelpCircle, Image,
@@ -17,38 +14,23 @@ import {
   getGetPublicContactQueryKey, getListAdminContentQueryKey, getListAdminDeliveriesQueryKey,
   getListAdminRatesQueryKey, getListAdminSchedulesQueryKey, getListAuditLogQueryKey,
   getListPublicContentQueryKey, getListPublicDeliveriesQueryKey, getListPublicRatesQueryKey,
-  getListPublicSchedulesQueryKey, getListStaffQueryKey, getGetRateQuoteQueryKey,
+  getListPublicSchedulesQueryKey, getGetRateQuoteQueryKey,
   useCreateContent, useCreateDelivery, useCreateRate, useCreateSchedule, useDeleteContent,
   useDeleteDelivery, useDeleteRate, useDeleteSchedule, useGetAdminOverview, useGetAdminSession,
   useGetAdminSettings, useGetPublicContact, useGetRateQuote, useListAdminContent,
   useListAdminDeliveries, useListAdminRates, useListAdminSchedules, useListAuditLog,
   useListPublicContent, useListPublicDeliveries, useListPublicRates, useListPublicSchedules,
-  useListStaff, useRemoveStaffRole, useUpdateAdminSettings, useUpdateContent, useUpdateDelivery,
-  useUpdateRate, useUpdateSchedule, useUpsertStaffRole,
+  useLoginAdmin, useLogoutAdmin, useUpdateAdminSettings, useUpdateContent,
+  useUpdateDelivery, useUpdateRate, useUpdateSchedule,
 } from '@workspace/api-client-react';
 import type {
   ContentEntry, ContentInput, Delivery, DeliveryInput, Rate, RateInput, Schedule, ScheduleInput,
-  SiteSettings, StaffMember,
+  AdminSession, SiteSettings,
 } from '@workspace/api-client-react';
 import NotFound from '@/pages/not-found';
 
 const queryClient = new QueryClient();
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, '');
-const clerkPubKey = publishableKeyFromHost(window.location.hostname, import.meta.env.VITE_CLERK_PUBLISHABLE_KEY);
-const clerkProxyUrl = import.meta.env.VITE_CLERK_PROXY_URL;
-const clerkAppearance = {
-  theme: shadcn,
-  cssLayerName: 'clerk',
-  options: { logoPlacement: 'inside' as const, logoLinkUrl: basePath || '/', logoImageUrl: `${window.location.origin}${basePath}/logo.svg` },
-  variables: {
-    colorPrimary: '#102C63', colorForeground: '#1F2937', colorMutedForeground: '#657184',
-    colorBackground: '#FFFFFF', colorInput: '#FFFFFF', colorInputForeground: '#1F2937',
-    colorDanger: '#E60012', colorNeutral: '#102C63', fontFamily: 'DM Sans',
-  },
-};
-function stripBase(path: string) {
-  return basePath && path.startsWith(basePath) ? path.slice(basePath.length) || '/' : path;
-}
 
 const mainNav = [
   ['/about', 'Tentang Kami'], ['/services', 'Layanan'], ['/rates', 'Tarif'],
@@ -295,45 +277,38 @@ const adminNavigation=[
   {path:'/admin/gallery',label:'Dokumentasi',icon:PackageCheck},
   {path:'/admin/content',label:'Konten',icon:FileText},
   {path:'/admin/settings',label:'Pengaturan',icon:ShieldCheck},
-  {path:'/admin/staff',label:'Staf',icon:BadgeCheck},
   {path:'/admin/audit-log',label:'Audit log',icon:Clock3},
 ];
-function canAccessAdminPath(role:StaffMember['role'],path:string){
-  if(role==='owner'||path==='/admin'||path==='/admin/audit-log')return true;
-  if(role==='admin_operations')return ['/admin/rates','/admin/schedules'].includes(path);
-  return ['/admin/gallery','/admin/content','/admin/settings'].includes(path);
-}
 function AdminGate({children}:{children:ReactNode}){
-  const [location]=useLocation();
+  const [location,setLocation]=useLocation();
   const session=useGetAdminSession({query:{retry:false,queryKey:getGetAdminSessionQueryKey()}});
+  const logout=useLogoutAdmin();
+  const qc=useQueryClient();
+  async function signOut(){try{await logout.mutateAsync()}catch{}finally{qc.clear();setLocation('/admin/login')}}
   if(session.isLoading)return <div className="admin-loading"><div className="w-72 space-y-3"><div className="skeleton h-8 w-44"/><div className="skeleton h-4 w-full"/><div className="skeleton h-4 w-4/5"/></div></div>;
-  if(session.isError||!session.data)return <div className="admin-signin"><div className="admin-signin-card"><ShieldCheck size={32} className="mx-auto text-[#102C63]"/><p className="eyebrow section-label mt-5">AREA KIRIMMOBIL</p><h1 className="mt-2 text-2xl font-extrabold text-[#102C63]">Masuk ke ruang kerja</h1><p className="mt-3 text-sm leading-6 text-slate-600">Gunakan akun staf yang sudah diberi akses. Jika akun Anda belum terdaftar, hubungi owner.</p><Link href="/sign-in" className="btn-main mt-6 w-full">Masuk dengan akun staf <ArrowRight size={16}/></Link><Link href="/" className="mt-4 inline-block text-sm font-semibold text-slate-500">Kembali ke situs publik</Link></div></div>;
-  const role=session.data.role;
+  if(session.isError||!session.data)return <div className="admin-signin"><div className="admin-signin-card"><ShieldCheck size={32} className="mx-auto text-[#102C63]"/><p className="eyebrow section-label mt-5">AREA KIRIMMOBIL</p><h1 className="mt-2 text-2xl font-extrabold text-[#102C63]">Masuk ke ruang kerja</h1><p className="mt-3 text-sm leading-6 text-slate-600">Area admin hanya dapat dibuka dengan email dan kata sandi admin.</p><Link href="/admin/login" className="btn-main mt-6 w-full">Masuk sebagai admin <ArrowRight size={16}/></Link><Link href="/" className="mt-4 inline-block text-sm font-semibold text-slate-500">Kembali ke situs publik</Link></div></div>;
+  const role:AdminSession['role']=session.data.role;
   const activePath=location;
   return <div className="admin-shell">
     <aside className="admin-sidebar">
       <div className="admin-brand"><Link href="/admin" aria-label="Kirimmobil admin"><img src={`${basePath}/kirimmobil-logo.png`} alt="Kirimmobil" /></Link></div>
       <div className="admin-profile"><p className="eyebrow">RUANG KERJA</p><p className="mt-2 truncate text-sm font-bold">{session.data.displayName||session.data.email}</p><p className="mt-1 text-[11px] uppercase tracking-wider text-blue-200">{human(role)}</p></div>
       <nav className="admin-nav" aria-label="Navigasi admin">
-        {adminNavigation.filter((item)=>canAccessAdminPath(role,item.path)).map(({path,label,icon:Icon})=><Link key={path} href={path} aria-current={activePath===path?'page':undefined} className={`admin-nav-link ${activePath===path?'is-active':''}`}><Icon size={17} strokeWidth={1.8}/><span>{label}</span></Link>)}
+        {adminNavigation.map(({path,label,icon:Icon})=><Link key={path} href={path} aria-current={activePath===path?'page':undefined} className={`admin-nav-link ${activePath===path?'is-active':''}`}><Icon size={17} strokeWidth={1.8}/><span>{label}</span></Link>)}
       </nav>
       <Link href="/" className="admin-public-link">Lihat situs publik <ArrowUpRight size={14}/></Link>
     </aside>
     <div className="admin-main">
-      <header className="admin-topbar"><div><p className="eyebrow text-slate-400">KIRIMMOBIL · CMS</p><p className="mt-1 text-sm font-bold text-[#102C63]">{human(activePath.split('/').pop()||'overview')}</p></div><div className="min-w-0 text-right"><p className="truncate text-sm font-semibold text-slate-700">{session.data.displayName||session.data.email}</p><p className="truncate text-xs text-slate-500">{human(role)} · {session.data.email}</p></div></header>
+      <header className="admin-topbar"><div><p className="eyebrow text-slate-400">KIRIMMOBIL · CMS</p><p className="mt-1 text-sm font-bold text-[#102C63]">{human(activePath.split('/').pop()||'overview')}</p></div><div className="flex items-center gap-3"><div className="min-w-0 text-right"><p className="truncate text-sm font-semibold text-slate-700">{session.data.displayName||session.data.email}</p><p className="truncate text-xs text-slate-500">{human(role)} · {session.data.email}</p></div><button type="button" className="btn-ghost px-3 py-2 text-xs" onClick={()=>void signOut()} disabled={logout.isPending}>{logout.isPending?'Keluar…':'Keluar'}</button></div></header>
       <main className="admin-content">{children}</main>
     </div>
   </div>;
 }
 function AdminHeading({eyebrow,title,desc,action}:{eyebrow:string;title:string;desc:string;action?:ReactNode}){return <div className="mb-7 flex flex-wrap items-end justify-between gap-4"><div><p className="eyebrow section-label">{eyebrow}</p><h1 className="mt-2 text-3xl font-extrabold text-[#102C63]">{title}</h1><p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">{desc}</p></div>{action}</div>}
-function AdminHome({role}:{role:StaffMember['role']}){
+function AdminHome(){
   const q=useGetAdminOverview();
-  const quickLinks=role==='owner'
-    ?[{label:'Tarif',href:'/admin/rates',icon:RouteIcon},{label:'Jadwal',href:'/admin/schedules',icon:CalendarDays},{label:'Dokumentasi',href:'/admin/gallery',icon:PackageCheck},{label:'Konten',href:'/admin/content',icon:FileText},{label:'Pengaturan',href:'/admin/settings',icon:ShieldCheck},{label:'Manajemen staf',href:'/admin/staff',icon:BadgeCheck}]
-    :role==='admin_operations'
-      ?[{label:'Tarif',href:'/admin/rates',icon:RouteIcon},{label:'Jadwal',href:'/admin/schedules',icon:CalendarDays}]
-      :[{label:'Dokumentasi',href:'/admin/gallery',icon:PackageCheck},{label:'Konten',href:'/admin/content',icon:FileText},{label:'Pengaturan',href:'/admin/settings',icon:ShieldCheck}];
-  const primary=role==='admin_content'?{href:'/admin/content',label:'Buka konten'}:{href:'/admin/rates',label:'Buka tarif'};
+  const quickLinks=[{label:'Tarif',href:'/admin/rates',icon:RouteIcon},{label:'Jadwal',href:'/admin/schedules',icon:CalendarDays},{label:'Dokumentasi',href:'/admin/gallery',icon:PackageCheck},{label:'Konten',href:'/admin/content',icon:FileText},{label:'Pengaturan',href:'/admin/settings',icon:ShieldCheck}];
+  const primary={href:'/admin/rates',label:'Buka tarif'};
   const metrics=[
     {label:'Tarif draft',value:q.data?.draftRates??0,note:'Belum tampil di situs',icon:RouteIcon},
     {label:'Tarif terbit',value:q.data?.publishedRates??0,note:'Tarif yang dipublikasikan',icon:BadgeCheck},
@@ -417,14 +392,45 @@ function DeliveryEditor({delivery,busy,onClose,onSave}:{delivery:Delivery|null;b
 function Modal({title,children,onClose}:{title:string;children:ReactNode;onClose:()=>void}){return <div className="fixed inset-0 z-50 flex items-end justify-center bg-[#0d1c32]/55 p-0 sm:items-center sm:p-5" onMouseDown={e=>{if(e.currentTarget===e.target)onClose()}}><section className="max-h-[92dvh] w-full max-w-2xl overflow-y-auto rounded-t-lg bg-white p-5 shadow-xl sm:rounded-lg sm:p-7"><header className="mb-5 flex items-center justify-between"><h2 className="text-xl font-extrabold text-[#102C63]">{title}</h2><button className="flex h-9 w-9 items-center justify-center rounded hover:bg-slate-100" onClick={onClose} aria-label="Tutup"><X size={18}/></button></header>{children}</section></div>}
 
 function SettingsAdmin(){const q=useGetAdminSettings();const update=useUpdateAdminSettings();const qc=useQueryClient();const [saved,setSaved]=useState(false);async function save(e:FormEvent<HTMLFormElement>){e.preventDefault();const f=new FormData(e.currentTarget);try{await update.mutateAsync({data:{companyName:String(f.get('companyName')),whatsappNumber:String(f.get('whatsappNumber')||'')||null,officeAddress:String(f.get('officeAddress')||'')||null,officeHours:String(f.get('officeHours')||'')||null,mapUrl:String(f.get('mapUrl')||'')||null,instagramUrl:String(f.get('instagramUrl')||'')||null}});await Promise.all([qc.invalidateQueries({queryKey:getGetAdminSettingsQueryKey()}),qc.invalidateQueries({queryKey:getGetPublicContactQueryKey()})]);setSaved(true);}catch{setSaved(false)}}return <><AdminHeading eyebrow="SITUS" title="Pengaturan" desc="Informasi kontak publik. Kolom kosong tidak ditampilkan kepada pengunjung."/>{q.isLoading?<div className="skeleton h-48"/>:q.isError?<LoadError retry={()=>void q.refetch()}/>:<form onSubmit={save} className="panel grid max-w-3xl gap-4 p-6 md:grid-cols-2">{[['companyName','Nama perusahaan',q.data?.companyName],['whatsappNumber','Nomor WhatsApp resmi',q.data?.whatsappNumber],['officeAddress','Alamat kantor',q.data?.officeAddress],['officeHours','Jam operasional',q.data?.officeHours],['mapUrl','URL peta',q.data?.mapUrl],['instagramUrl','Instagram URL',q.data?.instagramUrl]].map(([n,l,v])=><label key={String(n)} className="text-sm font-semibold text-slate-700">{l}<input name={String(n)} defaultValue={String(v??'')} className="form-control mt-1"/></label>)}<div className="md:col-span-2 flex items-center justify-between"><span className="text-xs text-emerald-700">{saved?'Pengaturan tersimpan.':''}</span><button disabled={update.isPending} className="btn-main">{update.isPending?'Menyimpan…':'Simpan pengaturan'}</button></div></form>}</>}
-function StaffAdmin(){const q=useListStaff();const upsert=useUpsertStaffRole();const remove=useRemoveStaffRole();const qc=useQueryClient();const [err,setErr]=useState('');async function save(e:FormEvent<HTMLFormElement>){e.preventDefault();const f=new FormData(e.currentTarget);try{await upsert.mutateAsync({clerkUserId:String(f.get('clerkUserId')),data:{email:String(f.get('email')),displayName:String(f.get('displayName')),role:f.get('role') as StaffMember['role']}});e.currentTarget.reset();await qc.invalidateQueries({queryKey:getListStaffQueryKey()});}catch{setErr('Peran staf tidak dapat disimpan. Clerk user ID harus sudah dikenali.')}}async function drop(s:StaffMember){if(confirm(`Hapus akses staf ${s.email}?`)){try{await remove.mutateAsync({clerkUserId:s.clerkUserId});await qc.invalidateQueries({queryKey:getListStaffQueryKey()})}catch{setErr('Akses staf tidak dapat dihapus.')}}}return <><AdminHeading eyebrow="AKSES OWNER" title="Manajemen staf" desc="Halaman ini hanya tersedia bagi owner. Penetapan peran harus sesuai akun Clerk yang sudah terdaftar."/><form onSubmit={save} className="panel mb-7 grid gap-3 p-5 md:grid-cols-4"><label className="text-xs font-semibold">Clerk user ID<input name="clerkUserId" required className="form-control mt-1 text-sm"/></label><label className="text-xs font-semibold">Email akun<input name="email" type="email" required className="form-control mt-1 text-sm"/></label><label className="text-xs font-semibold">Nama tampilan<input name="displayName" required className="form-control mt-1 text-sm"/></label><label className="text-xs font-semibold">Peran<select name="role" className="form-control mt-1 text-sm"><option value="admin_content">Admin konten</option><option value="admin_operations">Admin operasional</option><option value="owner">Owner</option></select></label><button className="btn-main md:col-span-4 md:justify-self-end" disabled={upsert.isPending}><Plus size={15}/> Tambah / ubah akses</button></form>{err&&<p role="alert" className="mb-3 text-sm text-[#E60012]">{err}</p>}{q.isLoading?<div className="skeleton h-32"/>:q.isError?<LoadError retry={()=>void q.refetch()}/>:<div className="panel divide-y divide-slate-100">{q.data?.map(s=><div key={s.clerkUserId} className="flex flex-wrap items-center justify-between gap-3 p-4"><div><p className="font-bold text-[#102C63]">{s.displayName}</p><p className="text-sm text-slate-500">{s.email} · {human(s.role)}</p></div><button className="text-sm font-semibold text-[#E60012] underline" onClick={()=>void drop(s)}>Hapus akses</button></div>)}</div>}</>}
 function AuditAdmin(){const q=useListAuditLog();return <><AdminHeading eyebrow="AKUNTABILITAS" title="Audit log" desc="Riwayat perubahan pada area staf. Log baca-saja untuk keterlacakan."/>{q.isLoading?<div className="skeleton h-40"/>:q.isError?<LoadError retry={()=>void q.refetch()}/>:q.data?.length?<div className="panel divide-y divide-slate-100">{q.data.map(a=><div key={a.id} className="grid gap-2 p-5 sm:grid-cols-[1fr_auto]"><div><p className="font-bold text-[#102C63]">{a.summary}</p><p className="mt-1 text-xs text-slate-500">{a.actorEmail} · {a.entityType} · {a.action}</p></div><time className="text-xs text-slate-500">{new Date(a.createdAt).toLocaleString('id-ID')}</time></div>)}</div>:<EmptyState title="Belum ada aktivitas">Perubahan yang tercatat akan muncul di sini.</EmptyState>}</>}
 function ProtectedAdmin({page}:{page:string}){
-  const session=useGetAdminSession({query:{retry:false,queryKey:getGetAdminSessionQueryKey()}});
-  if(session.data&&!canAccessAdminPath(session.data.role,page))return <AdminGate><div className="admin-denied"><CircleAlert className="text-[#E60012]"/><h1 className="mt-3 text-xl font-bold text-[#102C63]">Bagian ini belum tersedia untuk peran Anda</h1><p className="mt-2 text-sm leading-6 text-slate-500">Akses modul diatur berdasarkan peran staf. Hubungi owner jika Anda memerlukan akses tambahan.</p><Link href="/admin" className="btn-ghost mt-5">Kembali ke ikhtisar <ArrowRight size={15}/></Link></div></AdminGate>;
-  return <AdminGate>{page==='/admin'?<AdminHome role={session.data?.role??'admin_operations'}/>:page==='/admin/rates'?<RatesAdmin/>:page==='/admin/schedules'?<SchedulesAdmin/>:page==='/admin/gallery'?<GalleryAdmin/>:page==='/admin/content'?<ContentAdmin/>:page==='/admin/settings'?<SettingsAdmin/>:page==='/admin/staff'?<StaffAdmin/>:<AuditAdmin/>}</AdminGate>;
+  return <AdminGate>{page==='/admin'?<AdminHome/>:page==='/admin/rates'?<RatesAdmin/>:page==='/admin/schedules'?<SchedulesAdmin/>:page==='/admin/gallery'?<GalleryAdmin/>:page==='/admin/content'?<ContentAdmin/>:page==='/admin/settings'?<SettingsAdmin/>:<AuditAdmin/>}</AdminGate>;
 }
-function AdminLogin(){return <Redirect to="/sign-in"/>}
-function Router(){return <Switch><Route path="/" component={Home}/><Route path="/about" component={AboutPage}/><Route path="/services" component={ServicesPage}/><Route path="/rates" component={RatesPage}/><Route path="/schedules" component={SchedulesPage}/><Route path="/documentation" component={DocumentationPage}/><Route path="/testimonials" component={TestimonialsPage}/><Route path="/faq" component={FaqPage}/><Route path="/contact" component={ContactPage}/><Route path="/admin/login" component={AdminLogin}/><Route path="/admin" component={()=> <ProtectedAdmin page="/admin"/>}/><Route path="/admin/rates" component={()=> <ProtectedAdmin page="/admin/rates"/>}/><Route path="/admin/schedules" component={()=> <ProtectedAdmin page="/admin/schedules"/>}/><Route path="/admin/gallery" component={()=> <ProtectedAdmin page="/admin/gallery"/>}/><Route path="/admin/content" component={()=> <ProtectedAdmin page="/admin/content"/>}/><Route path="/admin/settings" component={()=> <ProtectedAdmin page="/admin/settings"/>}/><Route path="/admin/staff" component={()=> <ProtectedAdmin page="/admin/staff"/>}/><Route path="/admin/audit-log" component={()=> <ProtectedAdmin page="/admin/audit-log"/>}/><Route path="/sign-in/*?" component={()=> <div className="min-h-[100dvh] bg-[#F5F7FA] px-4 py-10"><div className="container-wide mb-8 flex justify-center"><Link href="/"><img className="w-[220px]" src={`${basePath}/kirimmobil-logo.png`} alt="Kirimmobil.com"/></Link></div><div className="mx-auto w-fit rounded-lg border border-slate-200 bg-white p-4 shadow-sm"><SignIn routing="path" path={`${basePath}/sign-in`} appearance={clerkAppearance}/></div></div>}/><Route path="/sign-up/*?" component={()=> <div className="min-h-[100dvh] bg-[#F5F7FA] px-4 py-10"><div className="container-wide mb-8 flex justify-center"><Link href="/"><img className="w-[220px]" src={`${basePath}/kirimmobil-logo.png`} alt="Kirimmobil.com"/></Link></div><div className="mx-auto w-fit rounded-lg border border-slate-200 bg-white p-4 shadow-sm"><SignUp routing="path" path={`${basePath}/sign-up`} appearance={clerkAppearance}/></div></div>}/><Route component={NotFound}/></Switch>}
-function App(){if(!clerkPubKey)throw new Error('Missing VITE_CLERK_PUBLISHABLE_KEY in .env file');return <QueryClientProvider client={queryClient}><ClerkProvider publishableKey={clerkPubKey} proxyUrl={clerkProxyUrl} routerPush={(to)=>window.history.pushState(null,'',stripBase(to))} routerReplace={(to)=>window.history.replaceState(null,'',stripBase(to))} appearance={clerkAppearance}><WouterRouter base={basePath}><SeoMetadata/><Router/></WouterRouter></ClerkProvider></QueryClientProvider>}
+function AdminLogin(){
+  const login=useLoginAdmin();
+  const session=useGetAdminSession({query:{retry:false,queryKey:getGetAdminSessionQueryKey()}});
+  const qc=useQueryClient();
+  const [,setLocation]=useLocation();
+  const [email,setEmail]=useState('');
+  const [password,setPassword]=useState('');
+  const [error,setError]=useState('');
+  if(session.data)return <Redirect to="/admin"/>;
+  async function submit(e:FormEvent<HTMLFormElement>){
+    e.preventDefault();
+    setError('');
+    try{
+      await login.mutateAsync({data:{email,password}});
+      await qc.invalidateQueries({queryKey:getGetAdminSessionQueryKey()});
+      setLocation('/admin');
+    }catch{
+      setError('Email atau kata sandi tidak valid, atau konfigurasi admin belum lengkap.');
+    }
+  }
+  return <div className="admin-signin"><div className="admin-signin-card">
+    <Link href="/" className="mb-6 flex justify-center"><img className="w-[220px]" src={`${basePath}/kirimmobil-logo.png`} alt="Kirimmobil.com"/></Link>
+    <ShieldCheck size={32} className="mx-auto text-[#102C63]"/>
+    <p className="eyebrow section-label mt-5">AREA KIRIMMOBIL</p>
+    <h1 className="mt-2 text-2xl font-extrabold text-[#102C63]">Masuk sebagai admin</h1>
+    <p className="mt-3 text-sm leading-6 text-slate-600">Gunakan email dan kata sandi admin yang dikonfigurasi untuk proyek ini.</p>
+    <form className="mt-6 grid gap-4 text-left" onSubmit={(e)=>void submit(e)}>
+      <label className="text-sm font-semibold text-slate-700">Email<input className="form-control mt-1" type="email" autoComplete="username" required value={email} onChange={(e)=>setEmail(e.target.value)}/></label>
+      <label className="text-sm font-semibold text-slate-700">Kata sandi<input className="form-control mt-1" type="password" autoComplete="current-password" minLength={12} maxLength={256} required value={password} onChange={(e)=>setPassword(e.target.value)}/></label>
+      {error&&<p role="alert" className="text-sm text-[#E60012]">{error}</p>}
+      <button className="btn-main w-full justify-center" disabled={login.isPending}>{login.isPending?'Memeriksa…':'Masuk'}</button>
+    </form>
+    <Link href="/" className="mt-5 inline-block text-sm font-semibold text-slate-500">Kembali ke situs publik</Link>
+  </div></div>;
+}
+function Router(){return <Switch><Route path="/" component={Home}/><Route path="/about" component={AboutPage}/><Route path="/services" component={ServicesPage}/><Route path="/rates" component={RatesPage}/><Route path="/schedules" component={SchedulesPage}/><Route path="/documentation" component={DocumentationPage}/><Route path="/testimonials" component={TestimonialsPage}/><Route path="/faq" component={FaqPage}/><Route path="/contact" component={ContactPage}/><Route path="/admin/login" component={AdminLogin}/><Route path="/admin" component={()=> <ProtectedAdmin page="/admin"/>}/><Route path="/admin/rates" component={()=> <ProtectedAdmin page="/admin/rates"/>}/><Route path="/admin/schedules" component={()=> <ProtectedAdmin page="/admin/schedules"/>}/><Route path="/admin/gallery" component={()=> <ProtectedAdmin page="/admin/gallery"/>}/><Route path="/admin/content" component={()=> <ProtectedAdmin page="/admin/content"/>}/><Route path="/admin/settings" component={()=> <ProtectedAdmin page="/admin/settings"/>}/><Route path="/admin/audit-log" component={()=> <ProtectedAdmin page="/admin/audit-log"/>}/><Route component={NotFound}/></Switch>}
+function App(){return <QueryClientProvider client={queryClient}><WouterRouter base={basePath}><SeoMetadata/><Router/></WouterRouter></QueryClientProvider>}
 export default App;

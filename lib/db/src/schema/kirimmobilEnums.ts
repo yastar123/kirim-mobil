@@ -27,8 +27,3 @@ export const contentKindEnum = pgEnum("content_kind", [
   "testimonial",
 ]);
 
-export const staffRoleEnum = pgEnum("staff_role", [
-  "owner",
-  "admin_content",
-  "admin_operations",
-]);

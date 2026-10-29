@@ -133,26 +133,47 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/SiteSettings"
+  /admin/login:
+    post:
+      operationId: loginAdmin
+      tags: [admin]
+      summary: Sign in to the admin workspace
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AdminLoginInput" }
+      responses:
+        "200":
+          description: Admin session created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminSession" }
+        "400": { description: Invalid login request }
+        "401": { description: Email or password is incorrect }
+        "429": { description: Too many login attempts }
+        "503": { description: Admin credentials are not configured }
+  /admin/logout:
+    post:
+      operationId: logoutAdmin
+      tags: [admin]
+      summary: Sign out of the admin workspace
+      responses:
+        "204": { description: Admin session ended }
   /admin/session:
     get:
       operationId: getAdminSession
       tags: [admin]
-      summary: Check the signed-in user's staff role
+      summary: Check the admin session
       responses:
         "200":
           description: Staff session
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/StaffMember"
+                $ref: "#/components/schemas/AdminSession"
         "401":
           description: Sign-in required
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorEnvelope"
-        "403":
-          description: Signed-in user does not have an admin role
           content:
             application/json:
               schema:
@@ -500,59 +521,6 @@ paths:
         "400": { description: Invalid input }
         "401": { description: Sign-in required }
         "403": { description: Admin role required }
-  /admin/staff:
-    get:
-      operationId: listStaff
-      tags: [admin]
-      summary: List staff roles
-      responses:
-        "200":
-          description: Staff members
-          content:
-            application/json:
-              schema:
-                type: array
-                items: { $ref: "#/components/schemas/StaffMember" }
-        "401": { description: Sign-in required }
-        "403": { description: Owner role required }
-  /admin/staff/{clerkUserId}:
-    put:
-      operationId: upsertStaffRole
-      tags: [admin]
-      summary: Assign or update a staff role
-      parameters:
-        - name: clerkUserId
-          in: path
-          required: true
-          schema: { type: string, minLength: 1 }
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: { $ref: "#/components/schemas/StaffRoleInput" }
-      responses:
-        "200":
-          description: Staff role updated
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/StaffMember" }
-        "400": { description: Invalid input }
-        "401": { description: Sign-in required }
-        "403": { description: Owner role required }
-    delete:
-      operationId: removeStaffRole
-      tags: [admin]
-      summary: Remove a staff role
-      parameters:
-        - name: clerkUserId
-          in: path
-          required: true
-          schema: { type: string, minLength: 1 }
-      responses:
-        "204": { description: Staff role removed }
-        "401": { description: Sign-in required }
-        "403": { description: Owner role required }
-        "404": { description: Staff member not found }
   /admin/audit-log:
     get:
       operationId: listAuditLog
@@ -629,9 +597,9 @@ components:
     ScheduleStatus:
       type: string
       enum: [booking_open, nearly_full, closed, departed, delayed, cancelled]
-    StaffRole:
+    AdminRole:
       type: string
-      enum: [owner, admin_content, admin_operations]
+      enum: [owner]
     Rate:
       type: object
       required: [id, origin, destination, vehicleCategory, method, price, insuranceIncluded, status, validFrom, validUntil, updatedAt]
@@ -838,22 +806,19 @@ components:
         officeHours: { type: ["string", "null"] }
         mapUrl: { type: ["string", "null"], format: uri }
         instagramUrl: { type: ["string", "null"], format: uri }
-    StaffMember:
-      type: object
-      required: [clerkUserId, email, displayName, role, createdAt]
-      properties:
-        clerkUserId: { type: string }
-        email: { type: string }
-        displayName: { type: string }
-        role: { $ref: "#/components/schemas/StaffRole" }
-        createdAt: { type: string, format: date-time }
-    StaffRoleInput:
+    AdminSession:
       type: object
       required: [email, displayName, role]
       properties:
         email: { type: string, format: email }
         displayName: { type: string }
-        role: { $ref: "#/components/schemas/StaffRole" }
+        role: { $ref: "#/components/schemas/AdminRole" }
+    AdminLoginInput:
+      type: object
+      required: [email, password]
+      properties:
+        email: { type: string, format: email }
+        password: { type: string, minLength: 12, maxLength: 256 }
     AuditEvent:
       type: object
       required: [id, actorEmail, entityType, entityId, action, summary, createdAt]

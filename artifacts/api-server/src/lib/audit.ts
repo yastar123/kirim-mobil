@@ -11,7 +11,7 @@ export async function recordAudit(
   },
 ): Promise<void> {
   await db.insert(auditLogTable).values({
-    actorUserId: staff.clerkUserId,
+    actorUserId: staff.id,
     actorEmail: staff.email,
     ...entry,
   });

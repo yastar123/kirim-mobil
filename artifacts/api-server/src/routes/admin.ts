@@ -14,15 +14,12 @@ import {
   GetAdminOverviewResponse,
   GetAdminSessionResponse,
   GetAdminSettingsResponse,
+  LoginAdminBody,
   ListAdminContentResponse,
   ListAdminDeliveriesResponse,
   ListAdminRatesResponse,
   ListAdminSchedulesResponse,
   ListAuditLogResponse,
-  ListStaffResponse,
-  RemoveStaffRoleParams,
-  RemoveStaffRoleResponse,
-  StaffRole,
   UpdateAdminSettingsBody,
   UpdateAdminSettingsResponse,
   UpdateContentBody,
@@ -37,9 +34,6 @@ import {
   UpdateScheduleBody,
   UpdateScheduleParams,
   UpdateScheduleResponse,
-  UpsertStaffRoleBody,
-  UpsertStaffRoleParams,
-  UpsertStaffRoleResponse,
 } from "@workspace/api-zod";
 import {
   auditLogTable,
@@ -48,10 +42,8 @@ import {
   ratesTable,
   schedulesTable,
   siteSettingsTable,
-  staffMembersTable,
   db,
 } from "@workspace/db";
-import { clerkClient, getAuth } from "@clerk/express";
 import {
   and,
   arrayContains,
@@ -64,9 +56,17 @@ import {
 } from "drizzle-orm";
 import { Router, type IRouter } from "express";
 import {
+  adminCredentialsConfigured,
+  clearAdminSessionCookie,
+  clearFailedAdminLogins,
+  createAdminSessionCookie,
   getStaffFromResponse,
+  limitAdminLoginAttempts,
+  recordFailedAdminLogin,
   requireStaff,
   resolveStaffMember,
+  verifyAdminCredentials,
+  type StaffRole,
 } from "../lib/adminAuth";
 import { recordAudit } from "../lib/audit";
 
@@ -87,18 +87,54 @@ function dateString(value: Date | string | null | undefined): string | null | un
   return value instanceof Date ? value.toISOString().slice(0, 10) : value;
 }
 
-router.get("/admin/session", async (req, res): Promise<void> => {
-  if (!getAuth(req).userId) {
-    res.status(401).json({ error: "Sign in to continue." });
+router.post("/admin/login", limitAdminLoginAttempts, async (req, res): Promise<void> => {
+  const parsed = LoginAdminBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Masukkan email dan kata sandi yang valid." });
+    return;
+  }
+  if (!adminCredentialsConfigured()) {
+    res.status(503).json({ error: "Kredensial admin belum dikonfigurasi." });
+    return;
+  }
+  if (!verifyAdminCredentials(parsed.data.email, parsed.data.password)) {
+    recordFailedAdminLogin(req);
+    res.status(401).json({ error: "Email atau kata sandi tidak benar." });
     return;
   }
 
+  clearFailedAdminLogins(req);
+  createAdminSessionCookie(res);
+  const email = parsed.data.email.trim().toLowerCase();
+  res.setHeader("Cache-Control", "no-store");
+  res.json(
+    GetAdminSessionResponse.parse({
+      email,
+      displayName: email,
+      role: "owner",
+    }),
+  );
+});
+
+router.post("/admin/logout", (_req, res): void => {
+  clearAdminSessionCookie(res);
+  res.status(204).end();
+});
+
+router.get("/admin/session", async (req, res): Promise<void> => {
   const staff = await resolveStaffMember(req);
   if (!staff) {
-    res.status(403).json({ error: "This account does not have a staff role." });
+    res.status(401).json({ error: "Silakan masuk ke area admin." });
     return;
   }
-  res.json(GetAdminSessionResponse.parse(staff));
+  res.setHeader("Cache-Control", "no-store");
+  res.json(
+    GetAdminSessionResponse.parse({
+      email: staff.email,
+      displayName: staff.displayName,
+      role: staff.role,
+    }),
+  );
 });
 
 router.get("/admin/overview", requireStaff(), async (_req, res): Promise<void> => {
@@ -518,111 +554,6 @@ router.patch("/admin/settings", requireStaff(...contentRoles), async (req, res):
     summary: "Pengaturan situs diperbarui",
   });
   res.json(UpdateAdminSettingsResponse.parse(settings));
-});
-
-router.get("/admin/staff", requireStaff(), async (_req, res): Promise<void> => {
-  const staff = getStaffFromResponse(res);
-  if (staff.role !== "owner") {
-    res.status(403).json({ error: "Owner role required." });
-    return;
-  }
-  const rows = await db
-    .select()
-    .from(staffMembersTable)
-    .orderBy(staffMembersTable.createdAt);
-  res.json(ListStaffResponse.parse(rows));
-});
-
-router.put("/admin/staff/:clerkUserId", requireStaff(), async (req, res): Promise<void> => {
-  const actor = getStaffFromResponse(res);
-  if (actor.role !== "owner") {
-    res.status(403).json({ error: "Owner role required." });
-    return;
-  }
-  const params = UpsertStaffRoleParams.safeParse({
-    clerkUserId: paramString(req.params.clerkUserId),
-  });
-  const parsed = UpsertStaffRoleBody.safeParse(req.body);
-  if (!params.success || !parsed.success) {
-    res.status(400).json({ error: params.error?.message ?? parsed.error?.message });
-    return;
-  }
-  let user;
-  try {
-    user = await clerkClient.users.getUser(params.data.clerkUserId);
-  } catch {
-    res.status(404).json({ error: "Akun Clerk tidak ditemukan." });
-    return;
-  }
-  const primaryEmail = user.emailAddresses.find(
-    (entry) => entry.id === user.primaryEmailAddressId,
-  )?.emailAddress;
-  if (!primaryEmail || primaryEmail.toLowerCase() !== parsed.data.email.toLowerCase()) {
-    res.status(400).json({ error: "Email harus sama dengan email utama akun Clerk." });
-    return;
-  }
-  if (params.data.clerkUserId === actor.clerkUserId && parsed.data.role !== "owner") {
-    res.status(400).json({ error: "Owner tidak dapat menurunkan perannya sendiri." });
-    return;
-  }
-  const displayName =
-    parsed.data.displayName.trim() ||
-    [user.firstName, user.lastName].filter(Boolean).join(" ") ||
-    primaryEmail;
-  const [member] = await db
-    .insert(staffMembersTable)
-    .values({
-      clerkUserId: params.data.clerkUserId,
-      email: primaryEmail,
-      displayName,
-      role: parsed.data.role,
-    })
-    .onConflictDoUpdate({
-      target: staffMembersTable.clerkUserId,
-      set: { email: primaryEmail, displayName, role: parsed.data.role, updatedAt: new Date() },
-    })
-    .returning();
-  await recordAudit(actor, {
-    entityType: "staff",
-    entityId: member.clerkUserId,
-    action: "role_updated",
-    summary: `Hak akses ${member.email} diperbarui`,
-  });
-  res.json(UpsertStaffRoleResponse.parse(member));
-});
-
-router.delete("/admin/staff/:clerkUserId", requireStaff(), async (req, res): Promise<void> => {
-  const actor = getStaffFromResponse(res);
-  if (actor.role !== "owner") {
-    res.status(403).json({ error: "Owner role required." });
-    return;
-  }
-  const params = RemoveStaffRoleParams.safeParse({
-    clerkUserId: paramString(req.params.clerkUserId),
-  });
-  if (!params.success) {
-    res.status(400).json({ error: params.error.message });
-    return;
-  }
-  if (params.data.clerkUserId === actor.clerkUserId) {
-    res.status(400).json({ error: "Owner tidak dapat menghapus aksesnya sendiri." });
-    return;
-  }
-  const [member] = await db
-    .delete(staffMembersTable)
-    .where(eq(staffMembersTable.clerkUserId, params.data.clerkUserId))
-    .returning();
-  if (!member) {
-    res.status(404).json({ error: "Anggota staf tidak ditemukan." });
-    return;
-  }
-  await recordAudit(actor, {
-    entityType: "staff",
-    entityId: member.clerkUserId,
-    action: "role_removed",
-    summary: `Hak akses ${member.email} dicabut`,
-  });
-  res.status(204).end();
 });
 
 router.get("/admin/audit-log", requireStaff(), async (_req, res): Promise<void> => {

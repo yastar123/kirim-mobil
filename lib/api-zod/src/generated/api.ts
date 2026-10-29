@@ -150,14 +150,38 @@ export const GetPublicContactResponse = zod.object({
 
 
 /**
- * @summary Check the signed-in user's staff role
+ * @summary Sign in to the admin workspace
+ */
+export const loginAdminBodyPasswordMin = 12;
+export const loginAdminBodyPasswordMax = 256;
+
+
+
+export const LoginAdminBody = zod.object({
+  "email": zod.string().email(),
+  "password": zod.string().min(loginAdminBodyPasswordMin).max(loginAdminBodyPasswordMax)
+})
+
+export const LoginAdminResponse = zod.object({
+  "email": zod.string().email(),
+  "displayName": zod.string(),
+  "role": zod.enum(['owner'])
+})
+
+
+/**
+ * @summary Sign out of the admin workspace
+ */
+export const LogoutAdminResponse = zod.void()
+
+
+/**
+ * @summary Check the admin session
  */
 export const GetAdminSessionResponse = zod.object({
-  "clerkUserId": zod.string(),
-  "email": zod.string(),
+  "email": zod.string().email(),
   "displayName": zod.string(),
-  "role": zod.enum(['owner', 'admin_content', 'admin_operations']),
-  "createdAt": zod.coerce.date()
+  "role": zod.enum(['owner'])
 })
 
 
@@ -676,57 +700,6 @@ export const UpdateAdminSettingsResponse = zod.object({
   "instagramUrl": zod.string().nullable(),
   "updatedAt": zod.coerce.date()
 })
-
-
-/**
- * @summary List staff roles
- */
-export const ListStaffResponseItem = zod.object({
-  "clerkUserId": zod.string(),
-  "email": zod.string(),
-  "displayName": zod.string(),
-  "role": zod.enum(['owner', 'admin_content', 'admin_operations']),
-  "createdAt": zod.coerce.date()
-})
-export const ListStaffResponse = zod.array(ListStaffResponseItem)
-
-
-/**
- * @summary Assign or update a staff role
- */
-
-
-
-export const UpsertStaffRoleParams = zod.object({
-  "clerkUserId": zod.coerce.string().min(1)
-})
-
-export const UpsertStaffRoleBody = zod.object({
-  "email": zod.string().email(),
-  "displayName": zod.string(),
-  "role": zod.enum(['owner', 'admin_content', 'admin_operations'])
-})
-
-export const UpsertStaffRoleResponse = zod.object({
-  "clerkUserId": zod.string(),
-  "email": zod.string(),
-  "displayName": zod.string(),
-  "role": zod.enum(['owner', 'admin_content', 'admin_operations']),
-  "createdAt": zod.coerce.date()
-})
-
-
-/**
- * @summary Remove a staff role
- */
-
-
-
-export const RemoveStaffRoleParams = zod.object({
-  "clerkUserId": zod.coerce.string().min(1)
-})
-
-export const RemoveStaffRoleResponse = zod.void()
 
 
 /**

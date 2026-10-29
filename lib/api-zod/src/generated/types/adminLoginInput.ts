@@ -5,10 +5,12 @@
  * Kirimmobil public and admin API
  * OpenAPI spec version: 0.1.0
  */
-import type { StaffRole } from './staffRole';
 
-export interface StaffRoleInput {
+export interface AdminLoginInput {
   email: string;
-  displayName: string;
-  role: StaffRole;
+  /**
+     * @minLength 12
+     * @maxLength 256
+     */
+  password: string;
 }

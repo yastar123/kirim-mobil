@@ -5,12 +5,10 @@
  * Kirimmobil public and admin API
  * OpenAPI spec version: 0.1.0
  */
-import type { StaffRole } from './staffRole';
+import type { AdminRole } from './adminRole';
 
-export interface StaffMember {
-  clerkUserId: string;
+export interface AdminSession {
   email: string;
   displayName: string;
-  role: StaffRole;
-  createdAt: Date;
+  role: AdminRole;
 }

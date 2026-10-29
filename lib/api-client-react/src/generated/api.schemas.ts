@@ -52,13 +52,11 @@ export const ScheduleStatus = {
   cancelled: 'cancelled',
 } as const;
 
-export type StaffRole = typeof StaffRole[keyof typeof StaffRole];
+export type AdminRole = typeof AdminRole[keyof typeof AdminRole];
 
 
-export const StaffRole = {
+export const AdminRole = {
   owner: 'owner',
-  admin_content: 'admin_content',
-  admin_operations: 'admin_operations',
 } as const;
 
 export interface Rate {
@@ -328,18 +326,19 @@ export interface SiteSettingsUpdate {
   instagramUrl?: string | null;
 }
 
-export interface StaffMember {
-  clerkUserId: string;
+export interface AdminSession {
   email: string;
   displayName: string;
-  role: StaffRole;
-  createdAt: string;
+  role: AdminRole;
 }
 
-export interface StaffRoleInput {
+export interface AdminLoginInput {
   email: string;
-  displayName: string;
-  role: StaffRole;
+  /**
+     * @minLength 12
+     * @maxLength 256
+     */
+  password: string;
 }
 
 export interface AuditEvent {

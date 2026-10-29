@@ -25,7 +25,9 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  AdminLoginInput,
   AdminOverview,
+  AdminSession,
   AuditEvent,
   ContentEntry,
   ContentInput,
@@ -46,8 +48,6 @@ import type {
   ScheduleUpdate,
   SiteSettings,
   SiteSettingsUpdate,
-  StaffMember,
-  StaffRoleInput,
   UploadUrlRequest,
   UploadUrlResponse
 } from './api.schemas';
@@ -801,6 +801,168 @@ export function useGetPublicContact<TData = Awaited<ReturnType<typeof getPublicC
 
 
 
+export const getLoginAdminUrl = () => {
+
+
+
+
+  return `/api/admin/login`
+}
+
+/**
+ * @summary Sign in to the admin workspace
+ */
+export const loginAdmin = async (adminLoginInput: AdminLoginInput, options?: Parameters<typeof customFetch>[1]): Promise<AdminSession> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<AdminSession>(getLoginAdminUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(adminLoginInput)
+  }
+);}
+
+
+
+
+
+export const getLoginAdminMutationKey = () => ['loginAdmin'] as const;
+
+export const getLoginAdminMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof loginAdmin>>, TError,LoginAdminMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof loginAdmin>>, TError,LoginAdminMutationVariables, TContext> => {
+
+const mutationKey = getLoginAdminMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof loginAdmin>>, LoginAdminMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  loginAdmin(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type LoginAdminMutationResult = NonNullable<Awaited<ReturnType<typeof loginAdmin>>>
+    export type LoginAdminMutationBody = BodyType<AdminLoginInput>
+    export type LoginAdminMutationError = ErrorType<void>
+    export type LoginAdminMutationVariables = {data: BodyType<AdminLoginInput>}
+
+    /**
+ * @summary Sign in to the admin workspace
+ */
+export const useLoginAdmin = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof loginAdmin>>, TError,LoginAdminMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof loginAdmin>>,
+        TError,
+        LoginAdminMutationVariables,
+        TContext
+      > => {
+      return useMutation(getLoginAdminMutationOptions(options), queryClient);
+    }
+
+export const getLogoutAdminUrl = () => {
+
+
+
+
+  return `/api/admin/logout`
+}
+
+/**
+ * @summary Sign out of the admin workspace
+ */
+export const logoutAdmin = async ( options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+  return customFetch<void>(getLogoutAdminUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getLogoutAdminMutationKey = () => ['logoutAdmin'] as const;
+
+export const getLogoutAdminMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof logoutAdmin>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof logoutAdmin>>, TError,void, TContext> => {
+
+const mutationKey = getLogoutAdminMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof logoutAdmin>>, void> = () => {
+
+
+          return  logoutAdmin(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type LogoutAdminMutationResult = NonNullable<Awaited<ReturnType<typeof logoutAdmin>>>
+
+    export type LogoutAdminMutationError = ErrorType<unknown>
+
+
+    /**
+ * @summary Sign out of the admin workspace
+ */
+export const useLogoutAdmin = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof logoutAdmin>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof logoutAdmin>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getLogoutAdminMutationOptions(options), queryClient);
+    }
+
 export const getGetAdminSessionUrl = () => {
 
 
@@ -810,11 +972,11 @@ export const getGetAdminSessionUrl = () => {
 }
 
 /**
- * @summary Check the signed-in user's staff role
+ * @summary Check the admin session
  */
-export const getAdminSession = async ( options?: Parameters<typeof customFetch>[1]): Promise<StaffMember> => {
+export const getAdminSession = async ( options?: Parameters<typeof customFetch>[1]): Promise<AdminSession> => {
 
-  return customFetch<StaffMember>(getGetAdminSessionUrl(),
+  return customFetch<AdminSession>(getGetAdminSessionUrl(),
   {
     ...options,
     method: 'GET'
@@ -881,7 +1043,7 @@ export function useGetAdminSession<TData = Awaited<ReturnType<typeof getAdminSes
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
- * @summary Check the signed-in user's staff role
+ * @summary Check the admin session
  */
 
 export function useGetAdminSession<TData = Awaited<ReturnType<typeof getAdminSession>>, TError = ErrorType<ErrorEnvelope>>(
@@ -2598,270 +2760,6 @@ export const useUpdateAdminSettings = <TError = ErrorType<void>,
         TContext
       > => {
       return useMutation(getUpdateAdminSettingsMutationOptions(options), queryClient);
-    }
-
-export const getListStaffUrl = () => {
-
-
-
-
-  return `/api/admin/staff`
-}
-
-/**
- * @summary List staff roles
- */
-export const listStaff = async ( options?: Parameters<typeof customFetch>[1]): Promise<StaffMember[]> => {
-
-  return customFetch<StaffMember[]>(getListStaffUrl(),
-  {
-    ...options,
-    method: 'GET'
-
-
-  }
-);}
-
-
-
-
-
-export const getListStaffQueryKey = () => {
-    return [
-    `/api/admin/staff`
-    ] as const;
-    }
-
-
-export const getListStaffQueryOptions = <TData = Awaited<ReturnType<typeof listStaff>>, TError = ErrorType<void>>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listStaff>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
-) => {
-
-const {query: queryOptions, request: requestOptions} = options ?? {};
-
-  const queryKey =  queryOptions?.queryKey ?? getListStaffQueryKey();
-
-
-
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof listStaff>>> = ({ signal }) => listStaff({ signal, ...requestOptions });
-
-
-
-
-
-   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listStaff>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
-}
-
-export type ListStaffQueryResult = NonNullable<Awaited<ReturnType<typeof listStaff>>>
-export type ListStaffQueryError = ErrorType<void>
-
-
-export function useListStaff<TData = Awaited<ReturnType<typeof listStaff>>, TError = ErrorType<void>>(
-  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof listStaff>>, TError, TData>> & Pick<
-        DefinedInitialDataOptions<
-          Awaited<ReturnType<typeof listStaff>>,
-          TError,
-          Awaited<ReturnType<typeof listStaff>>
-        > , 'initialData'
-      >, request?: SecondParameter<typeof customFetch>}
- , queryClient?: QueryClient
-  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useListStaff<TData = Awaited<ReturnType<typeof listStaff>>, TError = ErrorType<void>>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listStaff>>, TError, TData>> & Pick<
-        UndefinedInitialDataOptions<
-          Awaited<ReturnType<typeof listStaff>>,
-          TError,
-          Awaited<ReturnType<typeof listStaff>>
-        > , 'initialData'
-      >, request?: SecondParameter<typeof customFetch>}
- , queryClient?: QueryClient
-  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useListStaff<TData = Awaited<ReturnType<typeof listStaff>>, TError = ErrorType<void>>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listStaff>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
- , queryClient?: QueryClient
-  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-/**
- * @summary List staff roles
- */
-
-export function useListStaff<TData = Awaited<ReturnType<typeof listStaff>>, TError = ErrorType<void>>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listStaff>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
- , queryClient?: QueryClient
- ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
-
-  const queryOptions = getListStaffQueryOptions(options)
-
-  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
-
-  return withQueryKey(query, queryOptions.queryKey);
-}
-
-
-
-
-
-
-
-export const getUpsertStaffRoleUrl = (clerkUserId: string,) => {
-
-
-
-
-  return `/api/admin/staff/${clerkUserId}`
-}
-
-/**
- * @summary Assign or update a staff role
- */
-export const upsertStaffRole = async (clerkUserId: string,
-    staffRoleInput: StaffRoleInput, options?: Parameters<typeof customFetch>[1]): Promise<StaffMember> => {
-
-    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
-    if (!h) return {};
-    if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Symbol.iterator in h) {
-      return Object.fromEntries(
-        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
-      );
-    }
-    const headers: Record<string, string | readonly string[]> = {};
-    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
-      if (value !== undefined) headers[name] = value;
-    }
-    return headers;
-  };
-return customFetch<StaffMember>(getUpsertStaffRoleUrl(clerkUserId),
-  {
-    ...options,
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
-    body: JSON.stringify(staffRoleInput)
-  }
-);}
-
-
-
-
-
-export const getUpsertStaffRoleMutationKey = () => ['upsertStaffRole'] as const;
-
-export const getUpsertStaffRoleMutationOptions = <TError = ErrorType<void>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof upsertStaffRole>>, TError,UpsertStaffRoleMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof upsertStaffRole>>, TError,UpsertStaffRoleMutationVariables, TContext> => {
-
-const mutationKey = getUpsertStaffRoleMutationKey();
-const {mutation: mutationOptions, request: requestOptions} = options ?
-      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
-      options
-      : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }, request: undefined};
-
-
-
-
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof upsertStaffRole>>, UpsertStaffRoleMutationVariables> = (props) => {
-          const {clerkUserId,data} = props ?? {};
-
-          return  upsertStaffRole(clerkUserId,data,requestOptions)
-        }
-
-
-
-
-
-
-  return  { mutationFn, ...mutationOptions }}
-
-    export type UpsertStaffRoleMutationResult = NonNullable<Awaited<ReturnType<typeof upsertStaffRole>>>
-    export type UpsertStaffRoleMutationBody = BodyType<StaffRoleInput>
-    export type UpsertStaffRoleMutationError = ErrorType<void>
-    export type UpsertStaffRoleMutationVariables = {clerkUserId: string;data: BodyType<StaffRoleInput>}
-
-    /**
- * @summary Assign or update a staff role
- */
-export const useUpsertStaffRole = <TError = ErrorType<void>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof upsertStaffRole>>, TError,UpsertStaffRoleMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
- , queryClient?: QueryClient): UseMutationResult<
-        Awaited<ReturnType<typeof upsertStaffRole>>,
-        TError,
-        UpsertStaffRoleMutationVariables,
-        TContext
-      > => {
-      return useMutation(getUpsertStaffRoleMutationOptions(options), queryClient);
-    }
-
-export const getRemoveStaffRoleUrl = (clerkUserId: string,) => {
-
-
-
-
-  return `/api/admin/staff/${clerkUserId}`
-}
-
-/**
- * @summary Remove a staff role
- */
-export const removeStaffRole = async (clerkUserId: string, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
-
-  return customFetch<void>(getRemoveStaffRoleUrl(clerkUserId),
-  {
-    ...options,
-    method: 'DELETE'
-
-
-  }
-);}
-
-
-
-
-
-export const getRemoveStaffRoleMutationKey = () => ['removeStaffRole'] as const;
-
-export const getRemoveStaffRoleMutationOptions = <TError = ErrorType<void>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof removeStaffRole>>, TError,RemoveStaffRoleMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof removeStaffRole>>, TError,RemoveStaffRoleMutationVariables, TContext> => {
-
-const mutationKey = getRemoveStaffRoleMutationKey();
-const {mutation: mutationOptions, request: requestOptions} = options ?
-      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
-      options
-      : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }, request: undefined};
-
-
-
-
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof removeStaffRole>>, RemoveStaffRoleMutationVariables> = (props) => {
-          const {clerkUserId} = props ?? {};
-
-          return  removeStaffRole(clerkUserId,requestOptions)
-        }
-
-
-
-
-
-
-  return  { mutationFn, ...mutationOptions }}
-
-    export type RemoveStaffRoleMutationResult = NonNullable<Awaited<ReturnType<typeof removeStaffRole>>>
-
-    export type RemoveStaffRoleMutationError = ErrorType<void>
-    export type RemoveStaffRoleMutationVariables = {clerkUserId: string}
-
-    /**
- * @summary Remove a staff role
- */
-export const useRemoveStaffRole = <TError = ErrorType<void>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof removeStaffRole>>, TError,RemoveStaffRoleMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
- , queryClient?: QueryClient): UseMutationResult<
-        Awaited<ReturnType<typeof removeStaffRole>>,
-        TError,
-        RemoveStaffRoleMutationVariables,
-        TContext
-      > => {
-      return useMutation(getRemoveStaffRoleMutationOptions(options), queryClient);
     }
 
 export const getListAuditLogUrl = () => {
