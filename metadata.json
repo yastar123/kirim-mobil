@@ -1,0 +1,7 @@
+{
+  "name": "Kirimmobil",
+  "description": "Pengiriman Mobil Antarkota & Antarpulau - Layanan logistik dan pengiriman kendaraan",
+  "capabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
