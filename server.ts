@@ -20,13 +20,13 @@ async function start() {
   } else {
     const distPath = path.resolve(import.meta.dirname, "artifacts/kirimmobil/dist/public");
     app.use(express.static(distPath));
-    app.get("*", (_req, res) => {
+    app.get("/{*splat}", (_req, res) => {
       res.sendFile(path.join(distPath, "index.html"));
     });
   }
 
-  app.listen(port, "0.0.0.0", () => {
-    console.log(`Kirimmobil web & API server listening on http://0.0.0.0:${port}`);
+  app.listen(port, "127.0.0.1", () => {
+    console.log(`Kirimmobil web & API server listening on http://127.0.0.1:${port}`);
   });
 }
 
