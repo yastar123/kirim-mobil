@@ -54,40 +54,40 @@ function storedMediaUrl(path: string) {
 
 const seoPages: Record<string, { title: string; description: string }> = {
   '/': {
-    title: 'Pengiriman Mobil Antarkota & Antarpulau | Kirimmobil.com',
-    description: 'Rencanakan pengiriman kendaraan dengan informasi rute, estimasi tarif, jadwal, dan dokumentasi yang dipublikasikan setelah dikonfirmasi.',
+    title: 'Kirim Mobil - Pengiriman Mobil Antarkota & Antarpulau | Kirimmobil',
+    description: 'Kirim Mobil - Ekspedisi pengiriman mobil antarkota & antarpulau di Indonesia via kapal RORO, kontainer, car carrier, dan towing car. Cek estimasi tarif dan jadwal resmi.',
   },
   '/about': {
-    title: 'Tentang Kirimmobil.com | Profil Perusahaan',
-    description: 'Kenali Kirimmobil.com dan cara kami menyajikan informasi pengiriman kendaraan secara terbuka dan bertanggung jawab.',
+    title: 'Tentang Kirim Mobil | Profil & Legalitas Kirimmobil.com',
+    description: 'Kenali Kirim Mobil (Kirimmobil.com) - Penyedia jasa ekspedisi pengiriman kendaraan antarpulau dengan komitmen transparansi, aman, dan bergaransi asuransi.',
   },
   '/services': {
-    title: 'Layanan Pengiriman Kendaraan | Kirimmobil.com',
-    description: 'Lihat pilihan layanan pengiriman kendaraan dan persiapan dokumen. Ketersediaan metode mengikuti konfirmasi rute.',
+    title: 'Layanan Kirim Mobil - RORO, Kontainer & Towing | Kirimmobil.com',
+    description: 'Pilihan metode kirim mobil: Kapal RORO, Kontainer FCL, Car Carrier, dan Towing Car. Layanan door-to-door dan port-to-port ke seluruh Indonesia.',
   },
   '/rates': {
-    title: 'Cek Estimasi Tarif Kirim Mobil | Kirimmobil.com',
-    description: 'Cek estimasi tarif pengiriman berdasarkan rute, kategori kendaraan, dan metode yang telah dipublikasikan.',
+    title: 'Cek Tarif Kirim Mobil Antarpulau & Antarkota | Kirimmobil.com',
+    description: 'Cek estimasi biaya dan tarif kirim mobil berdasarkan rute asal, tujuan, jenis kendaraan, dan metode pengiriman yang terverifikasi.',
   },
   '/schedules': {
-    title: 'Jadwal Pengiriman Kendaraan | Kirimmobil.com',
-    description: 'Tinjau jadwal keberangkatan dan status operasional kendaraan dari informasi yang telah dikonfirmasi.',
+    title: 'Jadwal Kirim Mobil & Pelayaran Kapal Pelni / RORO | Kirimmobil.com',
+    description: 'Tinjau jadwal keberangkatan kapal pengiriman mobil, closing date, ETD, ETA, dan kuota slot pengiriman terupdate.',
   },
   '/documentation': {
-    title: 'Dokumentasi Pengiriman Kendaraan | Kirimmobil.com',
-    description: 'Lihat dokumentasi perjalanan kendaraan yang dipublikasikan dengan persetujuan dan perlindungan identitas.',
+    title: 'Dokumentasi Kirim Mobil Terpercaya & Berita Acara | Kirimmobil.com',
+    description: 'Dokumentasi asli perjalanan kirim mobil dari serah terima unit, pemuatan kapal laut, hingga serah terima di kota tujuan dengan aman.',
   },
   '/testimonials': {
-    title: 'Cerita Pelanggan | Kirimmobil.com',
-    description: 'Baca cerita pelanggan yang telah mendapat persetujuan untuk ditampilkan.',
+    title: 'Testimoni & Pengalaman Kirim Mobil Pelanggan | Kirimmobil.com',
+    description: 'Ulasan asli dari pemilik mobil yang telah mempercayakan pengiriman kendaraan mereka ke Kirim Mobil (Kirimmobil.com).',
   },
   '/faq': {
-    title: 'FAQ & Ketentuan Pengiriman | Kirimmobil.com',
-    description: 'Temukan jawaban atas pertanyaan umum seputar proses dan persiapan pengiriman kendaraan.',
+    title: 'FAQ Syarat & Ketentuan Kirim Mobil | Kirimmobil.com',
+    description: 'Panduan lengkap dan pertanyaan umum seputar dokumen wajib (STNK, BPKB), asuransi all-risk, dan proses serah terima kirim mobil.',
   },
   '/contact': {
-    title: 'Kontak Resmi Kirimmobil.com',
-    description: 'Lihat kanal komunikasi, alamat, jam layanan, dan peta Kirimmobil.com yang telah dikonfirmasi.',
+    title: 'Kontak Resmi & Alamat Kantor Kirim Mobil | Kirimmobil.com',
+    description: 'Hubungi WhatsApp resmi, alamat kantor, dan customer support Kirim Mobil (Kirimmobil.com) untuk konsultasi pengiriman kendaraan.',
   },
 };
 
@@ -96,8 +96,8 @@ function SeoMetadata() {
   useEffect(() => {
     const path = location.split(/[?#]/, 1)[0] || '/';
     const page = seoPages[path];
-    const title = page?.title ?? 'Area staf | Kirimmobil.com';
-    const description = page?.description ?? 'Area staf Kirimmobil.com.';
+    const title = page?.title ?? 'Area staf | Kirim Mobil';
+    const description = page?.description ?? 'Area staf Kirim Mobil.';
     document.title = title;
 
     const updateMeta = (selector: string, attribute: string, value: string) => {
@@ -121,6 +121,14 @@ function SeoMetadata() {
     updateMeta('meta[name="twitter:title"]', 'content', title);
     updateMeta('meta[name="twitter:description"]', 'name', 'twitter:description');
     updateMeta('meta[name="twitter:description"]', 'content', description);
+
+    let canonical = document.head.querySelector<HTMLLinkElement>('link[rel="canonical"]');
+    if (!canonical) {
+      canonical = document.createElement('link');
+      canonical.setAttribute('rel', 'canonical');
+      document.head.appendChild(canonical);
+    }
+    canonical.setAttribute('href', `https://kirimmobil.com${path === '/' ? '' : path}`);
   }, [location]);
   return null;
 }
@@ -129,7 +137,7 @@ function Header() {
   const [open, setOpen] = useState(false);
   return <header className="topbar">
     <div className="container-wide flex h-[76px] items-center justify-between gap-6">
-      <Link href="/" className="shrink-0" aria-label="Kirimmobil beranda"><img src={`${basePath}/kirimmobil-logo.png`} alt="Kirimmobil.com" className="h-auto w-[184px]" /></Link>
+      <Link href="/" className="shrink-0" aria-label="Kirim Mobil beranda"><img src={`${basePath}/kirimmobil-logo.png`} alt="Kirim Mobil - Kirimmobil.com" className="h-auto w-[184px]" /></Link>
       <nav className="hidden items-center gap-6 lg:flex" aria-label="Navigasi utama">
         {mainNav.map(([to, label]) => <Link key={to} href={to} className="text-[13px] font-semibold text-slate-700 transition hover:text-[#102C63]">{label}</Link>)}
         <Link href="/faq" className="text-[13px] font-semibold text-slate-700 hover:text-[#102C63]">FAQ</Link>
@@ -143,9 +151,9 @@ function Header() {
 function Footer() {
   return <footer className="mt-20 bg-[#102C63] text-white">
     <div className="container-wide grid gap-10 py-12 md:grid-cols-[1.4fr_1fr_1fr]">
-      <div><img src={`${basePath}/kirimmobil-logo.png`} alt="Kirimmobil.com" className="mb-4 w-[205px] rounded bg-white p-1" /><p className="max-w-sm text-sm leading-6 text-blue-100">Pengiriman kendaraan antarkota dan antarpulau. Informasi yang belum terverifikasi kami tandai dengan jelas.</p></div>
+      <div><img src={`${basePath}/kirimmobil-logo.png`} alt="Kirim Mobil - Kirimmobil.com" className="mb-4 w-[205px] rounded bg-white p-1" /><p className="max-w-sm text-sm leading-6 text-blue-100">Kirim Mobil (Kirimmobil.com) — Jasa pengiriman mobil dan kendaraan antarkota &amp; antarpulau di Indonesia terpercaya, aman, dan bergaransi asuransi.</p></div>
       <div><p className="eyebrow mb-4 text-blue-200">Jelajahi</p><div className="grid grid-cols-2 gap-3 text-sm text-blue-50">{[['/about','Tentang'],['/services','Layanan'],['/rates','Tarif'],['/schedules','Jadwal'],['/documentation','Dokumentasi'],['/faq','FAQ']].map(([to,label])=><Link key={to} href={to} className="hover:text-white">{label}</Link>)}</div></div>
-      <div><p className="eyebrow mb-4 text-blue-200">Informasi</p><div className="grid gap-3 text-sm text-blue-50"><Link href="/contact">Kontak resmi</Link><Link href="/testimonials">Cerita pelanggan</Link><Link href="/admin/login">Area staf</Link></div><p className="mt-6 text-xs text-blue-200">© {new Date().getFullYear()} Kirimmobil.com</p></div>
+      <div><p className="eyebrow mb-4 text-blue-200">Informasi</p><div className="grid gap-3 text-sm text-blue-50"><Link href="/contact">Kontak resmi</Link><Link href="/testimonials">Cerita pelanggan</Link><Link href="/admin/login">Area staf</Link></div><p className="mt-6 text-xs text-blue-200">© {new Date().getFullYear()} Kirim Mobil (Kirimmobil.com)</p></div>
     </div>
   </footer>;
 }

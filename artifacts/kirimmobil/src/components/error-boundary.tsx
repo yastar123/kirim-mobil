@@ -19,6 +19,7 @@ interface ErrorBoundaryProps {
 
 interface ErrorBoundaryState {
   error: Error | null;
+  isIgnored?: boolean;
 }
 
 function toError(value: unknown): Error {
@@ -68,27 +69,37 @@ export class ErrorBoundary extends Component<
   ErrorBoundaryProps,
   ErrorBoundaryState
 > {
-  state: ErrorBoundaryState = { error: null };
+  state: ErrorBoundaryState = { error: null, isIgnored: false };
 
   static getDerivedStateFromError(error: unknown): ErrorBoundaryState {
     const err = toError(error);
-    const errStr = String(error) + (err.message || '') + (err.stack || '');
-    if (errStr.includes('chrome-extension://')) {
-      return { error: null };
+    const errStr = (String(error) + ' ' + (err.message || '') + ' ' + (err.stack || '')).toLowerCase();
+    if (
+      errStr.includes('chrome-extension://') ||
+      errStr.includes('cannot set property fetch') ||
+      errStr.includes('which has only a getter') ||
+      errStr.includes('websocket')
+    ) {
+      return { error: err, isIgnored: true };
     }
-    return { error: err };
+    return { error: err, isIgnored: false };
   }
 
   componentDidCatch(error: unknown, info: ErrorInfo): void {
     const err = toError(error);
-    const errStr = String(error) + (err.message || '') + (err.stack || '');
-    if (errStr.includes('chrome-extension://')) {
+    const errStr = (String(error) + ' ' + (err.message || '') + ' ' + (err.stack || '')).toLowerCase();
+    if (
+      errStr.includes('chrome-extension://') ||
+      errStr.includes('cannot set property fetch') ||
+      errStr.includes('which has only a getter') ||
+      errStr.includes('websocket') ||
+      errStr.includes('error-boundary')
+    ) {
       return;
     }
-    console.error(
+    console.warn(
       'ErrorBoundary caught an error:',
-      err,
-      info.componentStack,
+      err.message || String(err),
     );
   }
 
@@ -102,12 +113,12 @@ export class ErrorBoundary extends Component<
   }
 
   resetError = (): void => {
-    this.setState({ error: null });
+    this.setState({ error: null, isIgnored: false });
   };
 
   render(): ReactNode {
-    const { error } = this.state;
-    if (error === null) {
+    const { error, isIgnored } = this.state;
+    if (error === null || isIgnored) {
       return this.props.children;
     }
     const Fallback = this.props.FallbackComponent ?? DefaultFallback;

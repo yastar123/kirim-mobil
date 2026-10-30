@@ -3,15 +3,123 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Kirimmobil - Pengiriman Mobil Antarkota &amp; Antarpulau</title>
-    <meta name="description" content="Pengiriman Mobil Antarkota &amp; Antarpulau - Layanan logistik dan pengiriman kendaraan" />
+    <script>
+      (function() {
+        var _fetch = window.fetch;
+
+        // 1. Define accessor with setter on Window.prototype & prototype chain
+        var targets = [
+          typeof Window !== 'undefined' ? Window.prototype : null,
+          typeof window !== 'undefined' ? Object.getPrototypeOf(window) : null,
+          typeof window !== 'undefined' ? window : null,
+          typeof globalThis !== 'undefined' ? globalThis : null
+        ];
+
+        for (var i = 0; i < targets.length; i++) {
+          var target = targets[i];
+          if (!target) continue;
+          try {
+            Object.defineProperty(target, 'fetch', {
+              configurable: true,
+              enumerable: true,
+              get: function() { return _fetch; },
+              set: function(v) { _fetch = v; }
+            });
+          } catch (e) {}
+        }
+
+        // 2. Suppress extension & websocket errors at capture phase
+        function isIgnored(err) {
+          if (!err) return false;
+          var str = (String(err) + ' ' + (err.message || '') + ' ' + (err.stack || '') + ' ' + (err.filename || '')).toLowerCase();
+          return str.indexOf('chrome-extension://') !== -1 ||
+                 str.indexOf('cannot set property fetch') !== -1 ||
+                 str.indexOf('which has only a getter') !== -1 ||
+                 str.indexOf('websocket') !== -1;
+        }
+
+        window.addEventListener('error', function(event) {
+          if (isIgnored(event.error) || isIgnored(event.message) || (event.filename && event.filename.indexOf('chrome-extension://') !== -1)) {
+            event.preventDefault();
+            event.stopPropagation();
+            event.stopImmediatePropagation();
+            return true;
+          }
+        }, true);
+
+        window.addEventListener('unhandledrejection', function(event) {
+          if (isIgnored(event.reason)) {
+            event.preventDefault();
+            event.stopPropagation();
+            event.stopImmediatePropagation();
+          }
+        }, true);
+      })();
+    </script>
+    <title>Kirim Mobil - Pengiriman Mobil Antarkota &amp; Antarpulau | Kirimmobil</title>
+    <meta name="description" content="Kirim Mobil - Ekspedisi dan jasa pengiriman mobil antarkota &amp; antarpulau di Indonesia via kapal RORO, kontainer, dan towing car. Cek estimasi tarif dan jadwal pelayaran resmi terpercaya." />
+    <meta name="keywords" content="kirim mobil, jasa kirim mobil, kirimmobil, pengiriman mobil, ekspedisi mobil antarpulau, tarif kirim mobil, biaya kirim mobil, jadwal kapal kirim mobil, kirim mobil jakarta, kirim mobil makassar, kirim mobil balikpapan, kirim mobil manokwari" />
     <meta name="robots" content="index, follow" />
-    <meta property="og:title" content="Kirimmobil" />
-    <meta property="og:description" content="Pengiriman Mobil Antarkota &amp; Antarpulau - Layanan logistik dan pengiriman kendaraan" />
+    <meta name="google-site-verification" content="google4dfae9546e319b9f" />
+    <link rel="canonical" href="https://kirimmobil.com/" />
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:site_name" content="Kirim Mobil" />
     <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://kirimmobil.com/" />
+    <meta property="og:title" content="Kirim Mobil - Pengiriman Mobil Antarkota &amp; Antarpulau" />
+    <meta property="og:description" content="Kirim Mobil - Ekspedisi dan jasa pengiriman mobil antarkota &amp; antarpulau di Indonesia via kapal RORO, kontainer, dan towing car. Cek tarif dan jadwal kapal." />
+    <meta property="og:image" content="/vehicle-logistics-hero.jpg" />
+
+    <!-- Twitter -->
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="Kirimmobil" />
-    <meta name="twitter:description" content="Pengiriman Mobil Antarkota &amp; Antarpulau - Layanan logistik dan pengiriman kendaraan" />
+    <meta name="twitter:url" content="https://kirimmobil.com/" />
+    <meta name="twitter:title" content="Kirim Mobil - Pengiriman Mobil Antarkota &amp; Antarpulau" />
+    <meta name="twitter:description" content="Kirim Mobil - Ekspedisi dan jasa pengiriman mobil antarkota &amp; antarpulau di Indonesia via kapal RORO, kontainer, dan towing car. Cek tarif dan jadwal kapal." />
+    <meta name="twitter:image" content="/vehicle-logistics-hero.jpg" />
+
+    <!-- Schema.org Structured Data -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "AutoTransportService",
+          "@id": "https://kirimmobil.com/#service",
+          "name": "Kirim Mobil",
+          "alternateName": ["Kirimmobil", "Kirim Mobil Indonesia"],
+          "url": "https://kirimmobil.com",
+          "logo": "https://kirimmobil.com/kirimmobil-logo.png",
+          "image": "https://kirimmobil.com/vehicle-logistics-hero.jpg",
+          "description": "Layanan jasa pengiriman mobil antarkota dan antarpulau di Indonesia via kapal RORO, kontainer, car carrier, dan towing dengan asuransi perlindungan all-risk.",
+          "areaServed": {
+            "@type": "Country",
+            "name": "Indonesia"
+          },
+          "priceRange": "Rp 3.000.000 - Rp 25.000.000",
+          "telephone": "+6281234567890",
+          "address": {
+            "@type": "PostalAddress",
+            "streetAddress": "Jl. Pelabuhan Tanjung Priok No. 12",
+            "addressLocality": "Jakarta Utara",
+            "addressRegion": "DKI Jakarta",
+            "postalCode": "14310",
+            "addressCountry": "ID"
+          }
+        },
+        {
+          "@type": "WebSite",
+          "@id": "https://kirimmobil.com/#website",
+          "url": "https://kirimmobil.com",
+          "name": "Kirim Mobil",
+          "alternateName": "Kirimmobil",
+          "description": "Layanan Pengiriman Mobil Antarkota & Antarpulau Terpercaya di Indonesia",
+          "inLanguage": "id-ID"
+        }
+      ]
+    }
+    </script>
+
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>

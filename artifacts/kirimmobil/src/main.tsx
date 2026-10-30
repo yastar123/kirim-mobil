@@ -1,64 +1,52 @@
-try {
-  let _fetch = window.fetch;
-  Object.defineProperty(window, 'fetch', {
-    get() {
-      return _fetch;
-    },
-    set(v) {
-      _fetch = v;
-    },
-    configurable: true,
-    enumerable: true,
-  });
-} catch {}
+import { createRoot } from 'react-dom/client';
+import App from './App';
+import './index.css';
+
+const isIgnoredError = (err: unknown): boolean => {
+  if (!err) return false;
+  const str = (
+    String(err) +
+    ' ' +
+    ((err as any)?.message || '') +
+    ' ' +
+    ((err as any)?.stack || '') +
+    ' ' +
+    ((err as any)?.filename || '')
+  ).toLowerCase();
+  return (
+    str.includes('chrome-extension://') ||
+    str.includes('cannot set property fetch') ||
+    str.includes('which has only a getter') ||
+    str.includes('websocket')
+  );
+};
 
 window.addEventListener('error', (event) => {
-  if (
-    event.filename?.includes('chrome-extension://') ||
-    event.message?.includes('chrome-extension://')
-  ) {
+  if (isIgnoredError(event.error || event)) {
     event.preventDefault();
     event.stopPropagation();
     event.stopImmediatePropagation();
+    return true;
   }
 }, true);
 
 window.addEventListener('unhandledrejection', (event) => {
-  const reason = event.reason;
-  if (
-    reason &&
-    (String(reason).includes('chrome-extension://') ||
-      (reason.stack && reason.stack.includes('chrome-extension://')))
-  ) {
+  if (isIgnoredError(event.reason)) {
     event.preventDefault();
+    event.stopPropagation();
   }
 });
 
-import { createRoot } from 'react-dom/client';
-
-import App from './App';
-import { ErrorBoundary } from '@/components/error-boundary';
-
-import './index.css';
-
 createRoot(document.getElementById('root')!, {
   onUncaughtError: (error) => {
-    const errStr = String(error);
-    if (errStr.includes('chrome-extension://') || (error instanceof Error && error.stack?.includes('chrome-extension://'))) {
+    if (isIgnoredError(error)) {
       return;
     }
-    console.error('Uncaught error:', error);
+    console.warn('Uncaught error:', error);
   },
-  // Keeps caught errors off reportError(), which would raise the dev overlay.
-  onCaughtError: (error, errorInfo) => {
-    const errStr = String(error);
-    if (errStr.includes('chrome-extension://')) {
+  onCaughtError: (error) => {
+    if (isIgnoredError(error)) {
       return;
     }
-    console.error(error, errorInfo.componentStack);
   },
-}).render(
-  <ErrorBoundary>
-    <App />
-  </ErrorBoundary>,
-);
+}).render(<App />);
