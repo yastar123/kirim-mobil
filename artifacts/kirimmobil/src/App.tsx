@@ -681,7 +681,11 @@ function DeliveryEditor({delivery,busy,onClose,onSave}:{delivery:Delivery|null;b
         if(file.size>50*1024*1024)throw new Error(`${file.name}: ukuran maksimum 50 MB.`);
         if(!['image/jpeg','image/png','image/webp','video/mp4','video/quicktime'].includes(file.type))throw new Error(`${file.name}: tipe file tidak didukung.`);
         const response=await fetch(`${basePath}/api/storage/uploads/request-url`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:file.name,size:file.size,contentType:file.type})});
-        if(!response.ok)throw new Error('Tidak dapat membuat URL unggah. Pastikan Anda masuk sebagai admin konten.');
+        if(!response.ok){
+          const errorBody:unknown=await response.json().catch(()=>undefined);
+          const message=errorBody&&typeof errorBody==='object'&&'error'in errorBody&&typeof errorBody.error==='string'?errorBody.error:`Permintaan URL unggah gagal (HTTP ${response.status}).`;
+          throw new Error(message);
+        }
         const result:unknown=await response.json();
         if(!result||typeof result!=='object'||!('uploadURL'in result)||!('objectPath'in result)||typeof result.uploadURL!=='string'||typeof result.objectPath!=='string')throw new Error('Respons unggah tidak valid.');
         const uploaded=await fetch(result.uploadURL,{method:'PUT',headers:{'Content-Type':file.type},body:file});

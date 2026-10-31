@@ -1,4 +1,7 @@
 import { randomUUID } from 'crypto';
+import { createReadStream } from 'node:fs';
+import { mkdir, stat, writeFile } from 'node:fs/promises';
+import path from 'node:path';
 import { Readable } from 'stream';
 import { File, Storage } from '@google-cloud/storage';
 
@@ -11,6 +14,16 @@ import {
 } from './objectAcl';
 
 const REPLIT_SIDECAR_ENDPOINT = 'http://127.0.0.1:1106';
+const LOCAL_UPLOAD_CONTENT_TYPES: Record<string, string> = {
+  'image/jpeg': 'jpg',
+  'image/png': 'png',
+  'image/webp': 'webp',
+  'video/mp4': 'mp4',
+  'video/quicktime': 'mov',
+};
+const LOCAL_UPLOAD_ID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.(jpg|png|webp|mp4|mov)$/;
+const MAX_UPLOAD_SIZE = 50 * 1024 * 1024;
 
 export const objectStorageClient = new Storage({
   credentials: {
@@ -38,6 +51,13 @@ export class ObjectNotFoundError extends Error {
   }
 }
 
+export class InvalidUploadError extends Error {
+  constructor() {
+    super('Invalid upload');
+    this.name = 'InvalidUploadError';
+  }
+}
+
 export class ObjectStorageService {
   constructor() {}
 
@@ -55,6 +75,89 @@ export class ObjectStorageService {
 
   getPrivateObjectDir(): string {
     return process.env.PRIVATE_OBJECT_DIR || '';
+  }
+
+  usesLocalStorage(): boolean {
+    return !this.getPrivateObjectDir();
+  }
+
+  createLocalUpload(contentType: string): {
+    uploadId: string;
+    objectPath: string;
+  } {
+    const extension = LOCAL_UPLOAD_CONTENT_TYPES[contentType];
+    if (!extension) {
+      throw new Error('Unsupported upload content type');
+    }
+
+    const uploadId = `${randomUUID()}.${extension}`;
+    return {
+      uploadId,
+      objectPath: `/objects/uploads/${uploadId}`,
+    };
+  }
+
+  async saveLocalUpload(
+    uploadId: string,
+    contentType: string,
+    content: Buffer,
+  ): Promise<void> {
+    const extension = LOCAL_UPLOAD_CONTENT_TYPES[contentType];
+    if (
+      !extension ||
+      !LOCAL_UPLOAD_ID_PATTERN.test(uploadId) ||
+      !uploadId.endsWith(`.${extension}`)
+    ) {
+      throw new InvalidUploadError();
+    }
+    if (content.length === 0 || content.length > MAX_UPLOAD_SIZE) {
+      throw new InvalidUploadError();
+    }
+
+    const uploadDirectory = this.getLocalUploadDirectory();
+    await mkdir(uploadDirectory, { recursive: true });
+    await writeFile(path.join(uploadDirectory, uploadId), content, {
+      flag: 'wx',
+    });
+  }
+
+  async downloadLocalObject(objectPath: string): Promise<Response> {
+    const uploadId = objectPath.replace(/^\/objects\/uploads\//, '');
+    if (!LOCAL_UPLOAD_ID_PATTERN.test(uploadId)) {
+      throw new ObjectNotFoundError();
+    }
+
+    const filePath = path.join(this.getLocalUploadDirectory(), uploadId);
+    let fileStats;
+    try {
+      fileStats = await stat(filePath);
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+        throw new ObjectNotFoundError();
+      }
+      throw error;
+    }
+    if (!fileStats.isFile()) {
+      throw new ObjectNotFoundError();
+    }
+
+    const extension = path.extname(uploadId).slice(1);
+    const contentType =
+      Object.entries(LOCAL_UPLOAD_CONTENT_TYPES).find(
+        ([, value]) => value === extension,
+      )?.[0] || 'application/octet-stream';
+    const stream = createReadStream(filePath);
+    return new Response(Readable.toWeb(stream) as ReadableStream, {
+      headers: {
+        'Content-Type': contentType,
+        'Content-Length': String(fileStats.size),
+        'Cache-Control': 'public, max-age=3600',
+      },
+    });
+  }
+
+  private getLocalUploadDirectory(): string {
+    return path.resolve(process.env.KIRIMMOBIL_UPLOAD_DIR || 'uploads');
   }
 
   async searchPublicObject(filePath: string): Promise<File | null> {
@@ -236,34 +339,30 @@ async function signObjectURL({
   method: 'GET' | 'PUT' | 'DELETE' | 'HEAD';
   ttlSec: number;
 }): Promise<string> {
-  try {
-    const request = {
-      bucket_name: bucketName,
-      object_name: objectName,
-      method,
-      expires_at: new Date(Date.now() + ttlSec * 1000).toISOString(),
-    };
-    const response = await fetch(
-      `${REPLIT_SIDECAR_ENDPOINT}/object-storage/signed-object-url`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(request),
-        signal: AbortSignal.timeout(3000),
+  const request = {
+    bucket_name: bucketName,
+    object_name: objectName,
+    method,
+    expires_at: new Date(Date.now() + ttlSec * 1000).toISOString(),
+  };
+  const response = await fetch(
+    `${REPLIT_SIDECAR_ENDPOINT}/object-storage/signed-object-url`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
       },
-    );
-    if (!response.ok) {
-      throw new Error(`Failed to sign object URL, status: ${response.status}`);
-    }
-
-    const payload = (await response.json()) as { signed_url?: unknown };
-    if (typeof payload.signed_url !== 'string') {
-      throw new Error('Object storage returned an invalid signed URL response');
-    }
-    return payload.signed_url;
-  } catch {
-    return `/api/storage/public-objects/${objectName}`;
+      body: JSON.stringify(request),
+      signal: AbortSignal.timeout(3000),
+    },
+  );
+  if (!response.ok) {
+    throw new Error(`Failed to sign object URL, status: ${response.status}`);
   }
+
+  const payload = (await response.json()) as { signed_url?: unknown };
+  if (typeof payload.signed_url !== 'string') {
+    throw new Error('Object storage returned an invalid signed URL response');
+  }
+  return payload.signed_url;
 }

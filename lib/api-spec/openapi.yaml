@@ -541,7 +541,7 @@ paths:
       operationId: requestUploadUrl
       tags: [Storage]
       summary: Request a secure direct-upload URL
-      description: Admin-only; sends metadata here and uploads file bytes directly to object storage.
+      description: Admin-only; uploads directly to object storage when configured, otherwise to authenticated local storage.
       requestBody:
         required: true
         content:
@@ -556,6 +556,40 @@ paths:
         "400": { description: Invalid file metadata }
         "401": { description: Sign-in required }
         "403": { description: Admin role required }
+  /storage/uploads/{uploadId}:
+    put:
+      operationId: uploadLocalFile
+      tags: [Storage]
+      summary: Upload a file to local storage
+      description: Admin-only fallback used when object storage is not configured. Maximum file size is 50 MB.
+      parameters:
+        - name: uploadId
+          in: path
+          required: true
+          schema: { type: string }
+        - name: size
+          in: query
+          required: true
+          schema: { type: integer, minimum: 1, maximum: 52428800 }
+      requestBody:
+        required: true
+        content:
+          image/jpeg:
+            schema: { type: string, format: binary }
+          image/png:
+            schema: { type: string, format: binary }
+          image/webp:
+            schema: { type: string, format: binary }
+          video/mp4:
+            schema: { type: string, format: binary }
+          video/quicktime:
+            schema: { type: string, format: binary }
+      responses:
+        "204": { description: File uploaded }
+        "400": { description: Invalid upload }
+        "401": { description: Sign-in required }
+        "403": { description: Admin role required }
+        "413": { description: File exceeds the 50 MB limit }
   /storage/objects/{objectPath}:
     get:
       operationId: getStorageObject
