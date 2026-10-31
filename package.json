@@ -12,7 +12,7 @@
   "scripts": {
     "dev": "tsx server.ts",
     "dev:5000": "PORT=5000 tsx server.ts",
-    "start": "tsx server.ts",
+    "start": "tsx scripts/start-production.ts",
     "start:5000": "PORT=5000 tsx server.ts",
     "build": "npm run build --workspace=@workspace/kirimmobil",
     "build:all": "npm run typecheck:libs && npm run --workspaces --if-present build",

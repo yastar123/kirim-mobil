@@ -759,8 +759,13 @@ function AdminLogin(){
       await login.mutateAsync({data:{email,password}});
       await qc.invalidateQueries({queryKey:getGetAdminSessionQueryKey()});
       setLocation('/admin');
-    }catch{
-      setError('Email atau kata sandi tidak valid, atau konfigurasi admin belum lengkap.');
+    }catch(error){
+      const status = typeof error === 'object' && error !== null && 'status' in error
+        ? error.status
+        : undefined;
+      setError(status === 503
+        ? 'Konfigurasi admin di server belum lengkap. Pastikan KIRIMMOBIL_ADMIN_EMAIL, KIRIMMOBIL_ADMIN_PASSWORD (minimal 12 karakter), dan SESSION_SECRET (minimal 32 karakter) sudah diatur.'
+        : 'Email atau kata sandi tidak valid, atau konfigurasi admin belum lengkap.');
     }
   }
   return <div className="admin-signin"><div className="admin-signin-card">
