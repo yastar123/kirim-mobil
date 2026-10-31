@@ -7,6 +7,12 @@ import {
 } from "node:crypto";
 import type { Request, RequestHandler, Response } from "express";
 
+try {
+  process.loadEnvFile();
+} catch (error) {
+  if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+}
+
 export type StaffRole = "owner" | "admin_content" | "admin_operations";
 export type StaffRecord = {
   id: string;
@@ -22,18 +28,15 @@ const LOGIN_WINDOW_MS = 15 * 60 * 1000;
 const MAX_LOGIN_ATTEMPTS = 10;
 const passwordSalt = randomBytes(16);
 
-export const DEFAULT_ADMIN_EMAIL = "admin@kirimmobil.com";
-export const DEFAULT_ADMIN_PASSWORD = "Kirimmobil2026!Secure";
-export const DEFAULT_SESSION_SECRET = "kirimmobil_session_secret_key_2026_dev";
-
 function normalizedAdminEmail(): string {
-  const email = (process.env.KIRIMMOBIL_ADMIN_EMAIL || DEFAULT_ADMIN_EMAIL).trim().toLowerCase();
-  return email && email.includes("@") ? email : DEFAULT_ADMIN_EMAIL;
+  return (process.env.KIRIMMOBIL_ADMIN_EMAIL || "").trim().toLowerCase();
 }
 
-const configuredPassword = process.env.KIRIMMOBIL_ADMIN_PASSWORD || DEFAULT_ADMIN_PASSWORD;
-const configuredPasswordHash = scryptSync(configuredPassword, passwordSalt, 64);
-const sessionSecret = process.env.SESSION_SECRET || DEFAULT_SESSION_SECRET;
+const configuredPassword = process.env.KIRIMMOBIL_ADMIN_PASSWORD || "";
+const configuredPasswordHash = configuredPassword
+  ? scryptSync(configuredPassword, passwordSalt, 64)
+  : undefined;
+const sessionSecret = process.env.SESSION_SECRET || "";
 const loginAttempts = new Map<string, { count: number; resetAt: number }>();
 
 type SessionClaims = {
@@ -44,7 +47,12 @@ type SessionClaims = {
 };
 
 export function adminCredentialsConfigured(): boolean {
-  return true;
+  return (
+    normalizedAdminEmail().includes("@") &&
+    configuredPassword.length >= 12 &&
+    sessionSecret.length >= 32 &&
+    Boolean(configuredPasswordHash)
+  );
 }
 
 function digest(value: string): Buffer {
@@ -66,11 +74,10 @@ function credentialFingerprint(secret: string): string {
 export function verifyAdminCredentials(email: string, password: string): boolean {
   const expectedEmail = normalizedAdminEmail();
   if (
-    !expectedEmail ||
+    !adminCredentialsConfigured() ||
     !configuredPassword ||
     !configuredPasswordHash ||
-    !sessionSecret ||
-    configuredPassword.length < 12
+    !sessionSecret
   ) {
     return false;
   }
@@ -86,7 +93,7 @@ export function verifyAdminCredentials(email: string, password: string): boolean
 export function createAdminSessionCookie(res: Response): void {
   const email = normalizedAdminEmail();
   const secret = sessionSecret;
-  if (!email || !secret || !configuredPassword) {
+  if (!adminCredentialsConfigured() || !email || !secret || !configuredPassword) {
     throw new Error("Admin authentication is not configured.");
   }
 
@@ -162,6 +169,7 @@ export async function resolveStaffMember(
   const password = configuredPassword;
   if (
     typeof token !== "string" ||
+    !adminCredentialsConfigured() ||
     !secret ||
     !email ||
     !password ||

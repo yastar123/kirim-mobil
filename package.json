@@ -18,7 +18,8 @@
     "build:all": "npm run typecheck:libs && npm run --workspaces --if-present build",
     "typecheck:libs": "tsc --build",
     "typecheck": "npm run typecheck:libs",
-    "lint": "npm run typecheck"
+    "lint": "npm run typecheck",
+    "db:push": "npm run push --workspace=@workspace/db"
   },
   "dependencies": {
     "@replit/connectors-sdk": "^0.4.3",

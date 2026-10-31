@@ -11,7 +11,7 @@ Website informasi dan operasional pengiriman kendaraan antarkota dan antarpulau,
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
 - `pnpm --filter @workspace/db run push` — apply schema changes to the development database
 
-The Replit-managed PostgreSQL database is provisioned for the project; `DATABASE_URL` is supplied by Replit and must not be copied into `.env` or source code. The CMS uses one admin account. Store `KIRIMMOBIL_ADMIN_EMAIL` and `KIRIMMOBIL_ADMIN_PASSWORD` in Replit Secrets; the password must be at least 12 characters. `SESSION_SECRET` signs the HttpOnly admin cookie. Do not create or share a default password.
+The Replit-managed PostgreSQL database is provisioned for the project; `DATABASE_URL` is supplied by Replit and must not be copied into `.env` or source code. The CMS uses one admin account. Store `KIRIMMOBIL_ADMIN_EMAIL`, `KIRIMMOBIL_ADMIN_PASSWORD`, and `SESSION_SECRET` in Replit Secrets. The password must be at least 12 characters and the session secret at least 32 characters. The login has no default credentials and is disabled until all three values are configured. `SESSION_SECRET` signs the HttpOnly admin cookie. Do not create or share a default password.
 
 ## Stack
 
@@ -41,7 +41,7 @@ The Replit-managed PostgreSQL database is provisioned for the project; `DATABASE
 
 ## Product
 
-Visitors can review published shipping rates and schedules, request route estimates, read service and document guidance, view approved delivery documentation, and find official contact details. The single admin manages this information through the authenticated CMS.
+Visitors can review published shipping rates and schedules, request route estimates through the WhatsApp number configured in site settings, read service and document guidance, view approved delivery documentation, and find official contact details. The authenticated CMS manages operational data, published content, contact information, and editable page copy with a preview rendered by the public page components.
 
 ## User preferences
 

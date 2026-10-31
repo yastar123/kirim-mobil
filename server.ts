@@ -1,25 +1,27 @@
 import path from "node:path";
 import express from "express";
-import apiApp from "./artifacts/api-server/src/app";
-
-try {
-  process.loadEnvFile?.();
-} catch {}
-
-const app = apiApp;
-const port = Number(process.env.PORT) || (process.env.NODE_ENV === "production" ? 5000 : 3000);
-const isProd = process.env.NODE_ENV === "production";
-
-// Direct routes for Google Search Console & SEO crawlers
-app.get("/google4dfae9546e319b9f.html", (_req, res) => {
-  res.type("text/html").send("google-site-verification: google4dfae9546e319b9f.html");
-});
-
-app.get("/robots.txt", (_req, res) => {
-  res.type("text/plain").send("User-agent: *\nAllow: /\nSitemap: https://kirimmobil.com/sitemap.xml\n");
-});
 
 async function start() {
+  try {
+    process.loadEnvFile();
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+  }
+
+  const { default: app } = await import("./artifacts/api-server/src/app");
+  const port = Number(process.env.PORT) || (process.env.NODE_ENV === "production" ? 5000 : 3000);
+  const isProd = process.env.NODE_ENV === "production";
+
+  app.get("/google4dfae9546e319b9f.html", (_req, res) => {
+    res.type("text/html").send("google-site-verification: google4dfae9546e319b9f.html");
+  });
+
+  app.get("/robots.txt", (_req, res) => {
+    res.type("text/plain").send("User-agent: *\nAllow: /\nSitemap: https://kirimmobil.net/sitemap.xml\n");
+  });
+
+  app.use("/assets", express.static(path.resolve(import.meta.dirname, "public/assets")));
+
   if (!isProd) {
     const { createServer: createViteServer } = await import("vite");
     const vite = await createViteServer({
